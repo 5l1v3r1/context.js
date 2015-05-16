@@ -5,7 +5,15 @@ var ARROW_OVER_CONTENT = 7;
 function Menu(items, $bounds, $pointTo) {
   this._$bounds = $bounds;
   this._$pointTo = $pointTo;
-  this._$element = $('<div></div>').css({position: 'absolute'});
+  this._$shielding = $('<div></div>').css({
+    position: 'fixed',
+    left: 0,
+    top: 0,
+    width: '100%',
+    height: '100%',
+    background: 'transparent'
+  }).click(this.hide.bind(this));
+  this._$element = $('<div></div>').css({position: 'fixed'});
   this._$canvas = $('<canvas></canvas>').css({
     position: 'absolute',
     width: '100%',
@@ -20,9 +28,30 @@ function Menu(items, $bounds, $pointTo) {
     overflowX: 'hidden'
   });
   this._screens = [items];
-  this._metrics = this._computeMetrics();
   this._addItemsFromScreen(items);
+  this._showing = false;
 }
+
+Menu.prototype.hide = function() {
+  if (!this._showing) {
+    return;
+  }
+  this._$shielding.detach();
+  this._$element.detach();
+  this._showing = false;
+};
+
+Menu.prototype.show = function() {
+  var metrics = this._computeMetrics();
+  this._updateDOMWithMetrics(metrics);
+  this._drawWithMetrics(metrics);
+
+  var body = $(document.body);
+  body.append(this._$shielding);
+  body.append(this._$element);
+
+  this._showing = true;
+};
 
 Menu.prototype._addItemsFromScreen = function(screens) {
   for (var i = 0, len = screens.length; i < len; ++i) {
@@ -37,32 +66,34 @@ Menu.prototype._computeMetrics = function() {
   var pointToPosition = this._$pointTo.offset();
   var pointToWidth = this._$pointTo.width();
   var pointToHeight = this._$pointTo.height();
-  
+
   var result = new Metrics();
-  
-  var requestedHeight = this._heightOfItems() + CANVAS_INSET*2;
+
+  var requestedHeight = this._contentHeight() + CANVAS_INSET*2;
   result.width = this._contentWidth() + CANVAS_INSET*2 + ARROW_SIZE;
   result.height = Math.min(requestedHeight, boundsHeight);
   if (boundsHeight < requestedHeight) {
     result.scrolls = true;
     result.scrollbarWidth = scrollbarWidth();
   }
-  
+
   result.x = pointToPosition.left + pointToWidth - ARROW_OVER_CONTENT;
-  
+
   result.y = pointToPosition.top + result.height/2;
   if (result.y < boundsPosition.top) {
     result.y = boundsPosition.top;
   } else if (result.y + result.height > boundsPosition.top + boundsHeight) {
     result.y = boundsPosition.top + boundsHeight - result.height;
   }
-  
+
   result.arrowY = Math.floor(pointToPosition.top + pointToHeight/2 - result.y);
   if (result.arrowY < CANVAS_INSET + ARROW_SIZE) {
     result.arrowY = CANVAS_INSET + ARROW_SIZE;
   } else if (result.arrowY > result.height - CANVAS_INSET - ARROW_SIZE) {
     result.arrowY = result.height - CANVAS_INSET - ARROW_SIZE;
   }
+
+  return result;
 };
 
 Menu.prototype._contentHeight = function() {
@@ -84,14 +115,18 @@ Menu.prototype._contentWidth = function() {
 };
 
 Menu.prototype._drawWithMetrics = function(metrics) {
-  // TODO: draw the arrow and shadow and background.
+  // TODO: draw a blurb here.
 };
 
-Menu.prototype._updateDOMForMetrics = function(metrics) {
+Menu.prototype._updateDOMWithMetrics = function(metrics) {
+  console.log('metrics', metrics, 'height', metrics.height);
   this._$element.css({
     top: metrics.y,
     left: metrics.x,
     width: metrics.width + metrics.scrollbarWidth,
+    height: metrics.height
+  });
+  console.log({
     height: metrics.height
   });
   this._$contents.css({width: metrics.width - ARROW_SIZE - CANVAS_INSET*2});

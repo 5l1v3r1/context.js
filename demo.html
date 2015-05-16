@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+
+  <head>
+    <meta charset="UTF-8">
+    <title>context.js Demo</title>
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+    <script src="crystal.js"></script>
+    <script src="build/context.js"></script>
+
+    <style type="text/css">
+    html, body {
+      height: 100%;
+      width: 100%;
+    }
+    .clicker {
+      width: 200px;
+      height: 50px;
+      background-color: #f0f0f0;
+      margin-left: 10px;
+    }
+    .clicker:hover {
+      background-color: #d5d5d5;
+    }
+    </style>
+
+    <script type="text/javascript">
+    $(function() {
+      var menu = null;
+      $('.clicker').click(function(e) {
+        if (menu !== null) {
+          menu.hide();
+        }
+        var items = [
+          new window.contextjs.TextRow("Cut"),
+          new window.contextjs.TextRow("Copy"),
+          new window.contextjs.TextRow("Paste"),
+          new window.contextjs.ExpandableRow("Move To Puzzle")
+        ];
+        menu = new window.contextjs.Menu(items, $(document.body),
+          $(this));
+        menu.show();
+      });
+    });
+    </script>
+
+  </head>
+
+  <body>
+    <div class="clicker">Click me</div>
+    <div class="clicker">Or me</div>
+    <div class="clicker">Or even me</div>
+    <div class="clicker">But maybe not me</div>
+    <div class="clicker">Yeah don't click me</div>
+    <div class="clicker">Don't click me!!!</div>
+  </body>
+
+</html>

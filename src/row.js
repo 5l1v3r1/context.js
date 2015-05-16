@@ -11,7 +11,7 @@ function TextRow(text, style) {
   if (style) {
     this._$element.css(style);
   }
-  this._minWidth = this._measureWidth();
+  this._measure();
   this._$element.css({minWidth: this._minWidth});
 }
 
@@ -20,14 +20,14 @@ TextRow.prototype.element = function() {
 };
 
 TextRow.prototype.height = function() {
-  return this._$element.css('height');
+  return this._height;
 };
 
 TextRow.prototype.minimumWidth = function() {
   return this._minWidth;
 };
 
-TextRow.prototype._measureWidth = function() {
+TextRow.prototype._measure = function() {
   this._$element.css({
     display: 'inline-block',
     position: 'absolute',
@@ -36,7 +36,10 @@ TextRow.prototype._measureWidth = function() {
     visibility: 'hidden'
   });
   $(document.body).append(this._$element);
-  var result = this._$element.width();
+  
+  this._minWidth = this._$element.width();
+  this._height = this._$element.height();
+  
   this._$element.detach();
   this._$element.css({
     display: 'block',
@@ -45,7 +48,6 @@ TextRow.prototype._measureWidth = function() {
     left: '',
     visibility: 'visible'
   });
-  return result;
 };
 
 function ExpandableRow(text, style) {
