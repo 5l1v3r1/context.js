@@ -12,12 +12,23 @@
     html, body {
       height: 100%;
       width: 100%;
+      margin: 0;
+      padding: 0;
+      background-color: #65bcd4;
+    }
+    .clicker-contents {
+      position: fixed;
+      bottom: 0;
+      height: 150px;
+      overflow-y: scroll;
+      overflow-x: hidden;
     }
     .clicker {
       width: 200px;
-      height: 50px;
+      height: 30px;
+      line-height: 30px;
+      text-align: right;
       background-color: #f0f0f0;
-      margin-left: 10px;
     }
     .clicker:hover {
       background-color: #d5d5d5;
@@ -47,12 +58,14 @@
   </head>
 
   <body>
-    <div class="clicker">Click me</div>
-    <div class="clicker">Or me</div>
-    <div class="clicker">Or even me</div>
-    <div class="clicker">But maybe not me</div>
-    <div class="clicker">Yeah don't click me</div>
-    <div class="clicker">Don't click me!!!</div>
+    <div class="clicker-contents">
+      <div class="clicker">Click me</div>
+      <div class="clicker">Or me</div>
+      <div class="clicker">Or even me</div>
+      <div class="clicker">But maybe not me</div>
+      <div class="clicker">Yeah don't click me</div>
+      <div class="clicker">Don't click me!!!</div>
+    </div>
   </body>
 
 </html>

@@ -1,13 +1,23 @@
+var DEFAULT_COLOR = '#999999';
+
 var DEFAULT_STYLE = {
   fontSize: 18,
-  paddingLeft: 10,
-  paddingRight: 10,
   height: 30,
-  lineHeight: '30px'
+  lineHeight: '30px',
+  position: 'relative',
+  color: DEFAULT_COLOR
 };
 
+var ARROW_PADDING_RIGHT = 10;
+var ARROW_PADDING_LEFT = 20;
+var TEXT_PADDING = 10;
+
 function TextRow(text, style) {
-  this._$element = $('<div></div>').css(DEFAULT_STYLE).text(text);
+  this._$element = $('<div><label></label></div>').css(DEFAULT_STYLE);
+  this._$element.find('label').text(text).css({
+    paddingLeft: TEXT_PADDING,
+    paddingRight: TEXT_PADDING
+  });
   if (style) {
     this._$element.css(style);
   }
@@ -43,7 +53,7 @@ TextRow.prototype._measure = function() {
   this._$element.detach();
   this._$element.css({
     display: 'block',
-    position: '',
+    position: 'relative',
     top: '',
     left: '',
     visibility: 'visible'
@@ -51,28 +61,35 @@ TextRow.prototype._measure = function() {
 };
 
 function ExpandableRow(text, style) {
+  if (!style) {
+    style = {};
+  }
+  style.paddingRight = 0;
   TextRow.call(this, text, style);
   this._$arrow = $('<canvas></canvas>').css({
     width: ExpandableRow.ARROW_WIDTH,
     height: ExpandableRow.ARROW_HEIGHT,
     position: 'absolute',
-    right: this.element().css('paddingRight'),
+    right: ExpandableRow.ARROW_PADDING_RIGHT,
     top: 'calc(50% - ' + ExpandableRow.ARROW_HEIGHT/2 + 'px)'
   });
-  this.element().css({minWidth: this.minimumWidth()});
+  this.element().css({minWidth: this.minimumWidth(), paddingRight: 0});
   this.element().append(this._$arrow);
   this._fillCanvas();
 }
 
-ExpandableRow.ARROW_WIDTH = 20;
-ExpandableRow.ARROW_HEIGHT = 20;
+ExpandableRow.ARROW_PADDING_RIGHT = 10;
+ExpandableRow.ARROW_PADDING_LEFT = 0;
+ExpandableRow.ARROW_WIDTH = 10;
+ExpandableRow.ARROW_HEIGHT = 15;
 ExpandableRow.THICKNESS = 2;
 
 ExpandableRow.prototype = Object.create(TextRow.prototype);
 
 ExpandableRow.prototype.minimumWidth = function() {
   return TextRow.prototype.minimumWidth.call(this) +
-    ExpandableRow.ARROW_WIDTH;
+    ExpandableRow.ARROW_WIDTH + ExpandableRow.ARROW_PADDING_LEFT +
+    ExpandableRow.ARROW_PADDING_RIGHT;
 };
 
 ExpandableRow.prototype._fillCanvas = function() {
@@ -83,7 +100,7 @@ ExpandableRow.prototype._fillCanvas = function() {
   this._$arrow[0].width = width;
   this._$arrow[0].height = height;
   
-  context.fillStyle = '#999999';
+  context.strokeStyle = DEFAULT_COLOR;
   context.lineWidth = ratio*ExpandableRow.THICKNESS;
   context.beginPath();
   context.moveTo(ratio*ExpandableRow.THICKNESS, ratio*ExpandableRow.THICKNESS);

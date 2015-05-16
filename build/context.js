@@ -28,9 +28,11 @@
   window.contextjs = {};
   var exports = window.contextjs;
 
-  var CANVAS_INSET = 3;
   var ARROW_SIZE = 6;
-  var ARROW_OVER_CONTENT = 7;
+  var ARROW_OVER_CONTENT = 4;
+  var CANVAS_INSET = 5;
+  var SHADOW_BLUR = 5;
+  var SHADOW_COLOR = 'rgba(0, 0, 0, 0.8)';
 
   function Menu(items, $bounds, $pointTo) {
     this._$bounds = $bounds;
@@ -57,6 +59,7 @@
       overflowY: 'hidden',
       overflowX: 'hidden'
     });
+    this._$element.append(this._$canvas).append(this._$contents);
     this._screens = [items];
     this._addItemsFromScreen(items);
     this._showing = false;
@@ -83,9 +86,10 @@
     this._showing = true;
   };
 
-  Menu.prototype._addItemsFromScreen = function(screens) {
-    for (var i = 0, len = screens.length; i < len; ++i) {
-      this._$contents.append(screens[i]);
+  Menu.prototype._addItemsFromScreen = function(items) {
+    for (var i = 0, len = items.length; i < len; ++i) {
+      console.log('yo, ', i, items[i].element());
+      this._$contents.append(items[i].element());
     }
   };
 
@@ -107,9 +111,10 @@
       result.scrollbarWidth = scrollbarWidth();
     }
 
-    result.x = pointToPosition.left + pointToWidth - ARROW_OVER_CONTENT;
+    result.x = pointToPosition.left + pointToWidth - ARROW_OVER_CONTENT -
+      CANVAS_INSET - ARROW_SIZE;
 
-    result.y = pointToPosition.top + result.height/2;
+    result.y = pointToPosition.top - result.height/2 + pointToHeight/2;
     if (result.y < boundsPosition.top) {
       result.y = boundsPosition.top;
     } else if (result.y + result.height > boundsPosition.top + boundsHeight) {
@@ -145,19 +150,41 @@
   };
 
   Menu.prototype._drawWithMetrics = function(metrics) {
-    // TODO: draw a blurb here.
+    var canvas = this._$canvas[0];
+    var scale = Math.ceil(window.crystal.getRatio());
+    var width = (metrics.width + metrics.scrollbarWidth) * scale;
+    var height = metrics.height * scale;
+    canvas.width = width;
+    canvas.height = height;
+
+    var inset = CANVAS_INSET * scale;
+    var arrowSize = ARROW_SIZE * scale;
+    var arrowY = metrics.arrowY * scale;
+
+    var context = canvas.getContext('2d');
+
+    context.shadowBlur = SHADOW_BLUR;
+    context.shadowColor = SHADOW_COLOR;
+    context.fillStyle = 'white';
+
+    context.beginPath();
+    context.moveTo(inset + arrowSize, inset);
+    context.lineTo(inset + arrowSize, arrowY-arrowSize);
+    context.lineTo(inset, arrowY);
+    context.lineTo(inset + arrowSize, arrowY+arrowSize);
+    context.lineTo(inset + arrowSize, height - inset);
+    context.lineTo(width - inset, height - inset);
+    context.lineTo(width - inset, inset);
+    context.closePath();
+    context.fill();
   };
 
   Menu.prototype._updateDOMWithMetrics = function(metrics) {
-    console.log('metrics', metrics, 'height', metrics.height);
     this._$element.css({
       top: metrics.y,
       left: metrics.x,
       width: metrics.width + metrics.scrollbarWidth,
-      height: metrics.heigh
-    });
-    console.log({
-      height: 36
+      height: metrics.height
     });
     this._$contents.css({width: metrics.width - ARROW_SIZE - CANVAS_INSET*2});
   };
@@ -211,16 +238,26 @@
   }
 
   exports.Menu = Menu;
+  var DEFAULT_COLOR = '#999999';
+
   var DEFAULT_STYLE = {
     fontSize: 18,
-    paddingLeft: 10,
-    paddingRight: 10,
     height: 30,
-    lineHeight: '30px'
+    lineHeight: '30px',
+    position: 'relative',
+    color: DEFAULT_COLOR
   };
 
+  var ARROW_PADDING_RIGHT = 10;
+  var ARROW_PADDING_LEFT = 20;
+  var TEXT_PADDING = 10;
+
   function TextRow(text, style) {
-    this._$element = $('<div></div>').css(DEFAULT_STYLE).text(text);
+    this._$element = $('<div><label></label></div>').css(DEFAULT_STYLE);
+    this._$element.find('label').text(text).css({
+      paddingLeft: TEXT_PADDING,
+      paddingRight: TEXT_PADDING
+    });
     if (style) {
       this._$element.css(style);
     }
@@ -256,7 +293,7 @@
     this._$element.detach();
     this._$element.css({
       display: 'block',
-      position: '',
+      position: 'relative',
       top: '',
       left: '',
       visibility: 'visible'
@@ -264,28 +301,35 @@
   };
 
   function ExpandableRow(text, style) {
+    if (!style) {
+      style = {};
+    }
+    style.paddingRight = 0;
     TextRow.call(this, text, style);
     this._$arrow = $('<canvas></canvas>').css({
       width: ExpandableRow.ARROW_WIDTH,
       height: ExpandableRow.ARROW_HEIGHT,
       position: 'absolute',
-      right: this.element().css('paddingRight'),
+      right: ExpandableRow.ARROW_PADDING_RIGHT,
       top: 'calc(50% - ' + ExpandableRow.ARROW_HEIGHT/2 + 'px)'
     });
-    this.element().css({minWidth: this.minimumWidth()});
+    this.element().css({minWidth: this.minimumWidth(), paddingRight: 0});
     this.element().append(this._$arrow);
     this._fillCanvas();
   }
 
-  ExpandableRow.ARROW_WIDTH = 20;
-  ExpandableRow.ARROW_HEIGHT = 20;
+  ExpandableRow.ARROW_PADDING_RIGHT = 10;
+  ExpandableRow.ARROW_PADDING_LEFT = 0;
+  ExpandableRow.ARROW_WIDTH = 10;
+  ExpandableRow.ARROW_HEIGHT = 15;
   ExpandableRow.THICKNESS = 2;
 
   ExpandableRow.prototype = Object.create(TextRow.prototype);
 
   ExpandableRow.prototype.minimumWidth = function() {
     return TextRow.prototype.minimumWidth.call(this) +
-      ExpandableRow.ARROW_WIDTH;
+      ExpandableRow.ARROW_WIDTH + ExpandableRow.ARROW_PADDING_LEFT +
+      ExpandableRow.ARROW_PADDING_RIGHT;
   };
 
   ExpandableRow.prototype._fillCanvas = function() {
@@ -296,7 +340,7 @@
     this._$arrow[0].width = width;
     this._$arrow[0].height = height;
 
-    context.fillStyle = '#999999';
+    context.strokeStyle = DEFAULT_COLOR;
     context.lineWidth = ratio*ExpandableRow.THICKNESS;
     context.beginPath();
     context.moveTo(ratio*ExpandableRow.THICKNESS, ratio*ExpandableRow.THICKNESS);

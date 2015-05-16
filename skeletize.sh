@@ -18,7 +18,7 @@ $LICENSE
 " >$OUTNAME
 
 # Read the source file and indent everything.
-cat src/*.js | sed -e 's/^/  /g' | sed -e 's/[ \t]*$//g' >>$OUTNAME
+cat src/*.js | sed -e 's/^/  /g' | sed -e 's/ *$//g' >>$OUTNAME
 
 echo "" >>$OUTNAME
 echo "})();" >>$OUTNAME

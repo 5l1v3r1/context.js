@@ -1,6 +1,8 @@
-var CANVAS_INSET = 3;
 var ARROW_SIZE = 6;
-var ARROW_OVER_CONTENT = 7;
+var ARROW_OVER_CONTENT = 4;
+var CANVAS_INSET = 5;
+var SHADOW_BLUR = 5;
+var SHADOW_COLOR = 'rgba(0, 0, 0, 0.8)';
 
 function Menu(items, $bounds, $pointTo) {
   this._$bounds = $bounds;
@@ -27,6 +29,7 @@ function Menu(items, $bounds, $pointTo) {
     overflowY: 'hidden',
     overflowX: 'hidden'
   });
+  this._$element.append(this._$canvas).append(this._$contents);
   this._screens = [items];
   this._addItemsFromScreen(items);
   this._showing = false;
@@ -53,9 +56,10 @@ Menu.prototype.show = function() {
   this._showing = true;
 };
 
-Menu.prototype._addItemsFromScreen = function(screens) {
-  for (var i = 0, len = screens.length; i < len; ++i) {
-    this._$contents.append(screens[i]);
+Menu.prototype._addItemsFromScreen = function(items) {
+  for (var i = 0, len = items.length; i < len; ++i) {
+    console.log('yo, ', i, items[i].element());
+    this._$contents.append(items[i].element());
   }
 };
 
@@ -77,9 +81,10 @@ Menu.prototype._computeMetrics = function() {
     result.scrollbarWidth = scrollbarWidth();
   }
 
-  result.x = pointToPosition.left + pointToWidth - ARROW_OVER_CONTENT;
+  result.x = pointToPosition.left + pointToWidth - ARROW_OVER_CONTENT -
+    CANVAS_INSET - ARROW_SIZE;
 
-  result.y = pointToPosition.top + result.height/2;
+  result.y = pointToPosition.top - result.height/2 + pointToHeight/2;
   if (result.y < boundsPosition.top) {
     result.y = boundsPosition.top;
   } else if (result.y + result.height > boundsPosition.top + boundsHeight) {
@@ -115,18 +120,40 @@ Menu.prototype._contentWidth = function() {
 };
 
 Menu.prototype._drawWithMetrics = function(metrics) {
-  // TODO: draw a blurb here.
+  var canvas = this._$canvas[0];
+  var scale = Math.ceil(window.crystal.getRatio());
+  var width = (metrics.width + metrics.scrollbarWidth) * scale;
+  var height = metrics.height * scale;
+  canvas.width = width;
+  canvas.height = height;
+
+  var inset = CANVAS_INSET * scale;
+  var arrowSize = ARROW_SIZE * scale;
+  var arrowY = metrics.arrowY * scale;
+
+  var context = canvas.getContext('2d');
+
+  context.shadowBlur = SHADOW_BLUR;
+  context.shadowColor = SHADOW_COLOR;
+  context.fillStyle = 'white';
+
+  context.beginPath();
+  context.moveTo(inset + arrowSize, inset);
+  context.lineTo(inset + arrowSize, arrowY-arrowSize);
+  context.lineTo(inset, arrowY);
+  context.lineTo(inset + arrowSize, arrowY+arrowSize);
+  context.lineTo(inset + arrowSize, height - inset);
+  context.lineTo(width - inset, height - inset);
+  context.lineTo(width - inset, inset);
+  context.closePath();
+  context.fill();
 };
 
 Menu.prototype._updateDOMWithMetrics = function(metrics) {
-  console.log('metrics', metrics, 'height', metrics.height);
   this._$element.css({
     top: metrics.y,
     left: metrics.x,
     width: metrics.width + metrics.scrollbarWidth,
-    height: metrics.height
-  });
-  console.log({
     height: metrics.height
   });
   this._$contents.css({width: metrics.width - ARROW_SIZE - CANVAS_INSET*2});
