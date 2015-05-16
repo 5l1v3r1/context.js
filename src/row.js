@@ -16,7 +16,11 @@ function TextRow(text, style) {
 }
 
 TextRow.prototype.element = function() {
-  return this._$element[0];
+  return this._$element;
+};
+
+TextRow.prototype.height = function() {
+  return this._$element.css('height');
 };
 
 TextRow.prototype.minimumWidth = function() {
@@ -50,11 +54,11 @@ function ExpandableRow(text, style) {
     width: ExpandableRow.ARROW_WIDTH,
     height: ExpandableRow.ARROW_HEIGHT,
     position: 'absolute',
-    right: DEFAULT_STYLE.paddingRight,
+    right: this.element().css('paddingRight'),
     top: 'calc(50% - ' + ExpandableRow.ARROW_HEIGHT/2 + 'px)'
   });
-  this._$element.css({minWidth: this.minimumWidth()});
-  this._$element.append(this._$arrow);
+  this.element().css({minWidth: this.minimumWidth()});
+  this.element().append(this._$arrow);
   this._fillCanvas();
 }
 
@@ -65,7 +69,8 @@ ExpandableRow.THICKNESS = 2;
 ExpandableRow.prototype = Object.create(TextRow.prototype);
 
 ExpandableRow.prototype.minimumWidth = function() {
-  return ExpandableRow.prototype.minimumWidth.call(this) + ;
+  return TextRow.prototype.minimumWidth.call(this) +
+    ExpandableRow.ARROW_WIDTH;
 };
 
 ExpandableRow.prototype._fillCanvas = function() {
@@ -88,3 +93,4 @@ ExpandableRow.prototype._fillCanvas = function() {
 };
 
 exports.TextRow = TextRow;
+exports.ExpandableRow = ExpandableRow;
