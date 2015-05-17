@@ -19,16 +19,21 @@
     .clicker-contents {
       position: fixed;
       bottom: 0;
-      height: 150px;
+      height: 200px;
+      width: 100%;
       overflow-y: scroll;
       overflow-x: hidden;
+      background-color: #f0f0f0;
     }
     .clicker {
       width: 200px;
       height: 30px;
       line-height: 30px;
       text-align: right;
-      background-color: #f0f0f0;
+      background-color: white;
+    }
+    .clicker label {
+      padding-right: 10px;
     }
     .clicker:hover {
       background-color: #d5d5d5;
@@ -48,7 +53,7 @@
           new window.contextjs.TextRow("Paste"),
           new window.contextjs.ExpandableRow("Move To Puzzle")
         ];
-        menu = new window.contextjs.Menu(items, $(document.body),
+        menu = new window.contextjs.Menu(items, $('.clicker-contents'),
           $(this));
         menu.show();
       });
@@ -59,12 +64,17 @@
 
   <body>
     <div class="clicker-contents">
-      <div class="clicker">Click me</div>
-      <div class="clicker">Or me</div>
-      <div class="clicker">Or even me</div>
-      <div class="clicker">But maybe not me</div>
-      <div class="clicker">Yeah don't click me</div>
-      <div class="clicker">Don't click me!!!</div>
+      <div class="clicker"><label>Click me</label></div>
+      <div class="clicker"><label>Or me</label></div>
+      <div class="clicker"><label>Or even me</label></div>
+      <div class="clicker"><label>But maybe not me</label></div>
+      <div class="clicker"><label>Yeah don't click me</label></div>
+      <div class="clicker"><label>Don't click me!!!</label></div>
+      <div class="clicker"><label>Don't click me!!!</label></div>
+      <div class="clicker"><label>Don't click me!!!</label></div>
+      <div class="clicker"><label>Don't click me!!!</label></div>
+      <div class="clicker"><label>Don't click me!!!</label></div>
+      <div class="clicker"><label>Don't click me!!!</label></div>
     </div>
   </body>
 

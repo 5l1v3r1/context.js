@@ -2,7 +2,7 @@ var ARROW_SIZE = 6;
 var ARROW_OVER_CONTENT = 4;
 var CANVAS_INSET = 5;
 var SHADOW_BLUR = 5;
-var SHADOW_COLOR = 'rgba(0, 0, 0, 0.8)';
+var SHADOW_COLOR = 'rgba(144, 144, 144, 1)';
 
 function Menu(items, $bounds, $pointTo) {
   this._$bounds = $bounds;

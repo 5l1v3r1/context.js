@@ -32,7 +32,7 @@
   var ARROW_OVER_CONTENT = 4;
   var CANVAS_INSET = 5;
   var SHADOW_BLUR = 5;
-  var SHADOW_COLOR = 'rgba(0, 0, 0, 0.8)';
+  var SHADOW_COLOR = 'rgba(144, 144, 144, 1)';
 
   function Menu(items, $bounds, $pointTo) {
     this._$bounds = $bounds;
@@ -245,21 +245,22 @@
     height: 30,
     lineHeight: '30px',
     position: 'relative',
-    color: DEFAULT_COLOR
+    color: DEFAULT_COLOR,
+    paddingLeft: 10,
+    paddingRight: 10
   };
 
   var ARROW_PADDING_RIGHT = 10;
   var ARROW_PADDING_LEFT = 20;
-  var TEXT_PADDING = 10;
 
   function TextRow(text, style) {
-    this._$element = $('<div><label></label></div>').css(DEFAULT_STYLE);
-    this._$element.find('label').text(text).css({
-      paddingLeft: TEXT_PADDING,
-      paddingRight: TEXT_PADDING
+    this._$element = $('<div><label></label></div>').css({
+      position: 'relative'
     });
+    var $label = this._$element.find('label');
+    $label.text(text).css(DEFAULT_STYLE);
     if (style) {
-      this._$element.css(style);
+      $label.css(style);
     }
     this._measure();
     this._$element.css({minWidth: this._minWidth});
@@ -301,10 +302,6 @@
   };
 
   function ExpandableRow(text, style) {
-    if (!style) {
-      style = {};
-    }
-    style.paddingRight = 0;
     TextRow.call(this, text, style);
     this._$arrow = $('<canvas></canvas>').css({
       width: ExpandableRow.ARROW_WIDTH,
