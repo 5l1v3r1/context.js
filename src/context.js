@@ -1,9 +1,11 @@
 var ARROW_CONTENT_OVERLAP = 5;
+var DEFAULT_CONTAINER_PADDING = 5;
 
 // A Context holds information about where a Menu is showing on the screen.
-function Context($element, $container) {
+function Context($element, $container, containerPadding) {
   this._$element = $element;
   this._$container = $container || $(document.body);
+  this._containerPadding = containerPadding || DEFAULT_CONTAINER_PADDING;
 }
 
 Context.prototype.arrowPosition = function() {
@@ -17,10 +19,10 @@ Context.prototype.arrowPosition = function() {
 Context.prototype.containerBounds = function() {
   var offset = this._$container.offset();
   return {
-    top: offset.top,
-    left: offset.left,
-    width: this._$container.width(),
-    height: this._$container.height()
+    top: offset.top + this._containerPadding,
+    left: offset.left + this._containerPadding,
+    width: this._$container.width() - this._containerPadding*2,
+    height: this._$container.height() - this._containerPadding*2
   };
 };
 

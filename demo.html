@@ -3,7 +3,7 @@
 
   <head>
     <meta charset="UTF-8">
-    <title>context.js Demo</title>
+    <title>context.js demo</title>
     <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
     <script src="crystal.js"></script>
     <script src="build/context.js"></script>
@@ -28,12 +28,13 @@
     .clicker {
       width: 200px;
       height: 30px;
-      line-height: 30px;
       text-align: right;
       background-color: white;
     }
     .clicker label {
+      line-height: 30px;
       padding-right: 20px;
+      color: #999999;
     }
     .clicker:hover {
       background-color: #d5d5d5;
@@ -47,14 +48,15 @@
         if (menu !== null) {
           menu.hide();
         }
-        var items = [
-          new window.contextjs.TextRow("Cut"),
-          new window.contextjs.TextRow("Copy"),
-          new window.contextjs.TextRow("Paste"),
-          new window.contextjs.ExpandableRow("Move To Puzzle")
-        ];
-        menu = new window.contextjs.Menu(items, $('.clicker-contents'),
-          $(this));
+        var page = new window.contextjs.Page([
+          new window.contextjs.TextRow('Cut'),
+          new window.contextjs.TextRow('Copy'),
+          new window.contextjs.TextRow('Paste'),
+          new window.contextjs.ExpandableRow('Move To Puzzle')
+        ]);
+        var context = new window.contextjs.Context($(this),
+          $('.clicker-contents'));
+        menu = new window.contextjs.Menu(context, page);
         menu.show();
       });
     });

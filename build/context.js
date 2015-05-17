@@ -29,11 +29,13 @@
   var exports = window.contextjs;
 
   var ARROW_CONTENT_OVERLAP = 5;
+  var DEFAULT_CONTAINER_PADDING = 5;
 
   // A Context holds information about where a Menu is showing on the screen.
-  function Context($element, $container) {
+  function Context($element, $container, containerPadding) {
     this._$element = $element;
     this._$container = $container || $(document.body);
+    this._containerPadding = containerPadding || DEFAULT_CONTAINER_PADDING;
   }
 
   Context.prototype.arrowPosition = function() {
@@ -47,199 +49,226 @@
   Context.prototype.containerBounds = function() {
     var offset = this._$container.offset();
     return {
-      top: offset.top,
-      left: offset.left,
-      width: this._$container.width(),
-      height: this._$container.height()
+      top: offset.top + this._containerPadding,
+      left: offset.left + this._containerPadding,
+      width: this._$container.width() - this._containerPadding*2,
+      height: this._$container.height() - this._containerPadding*2
     };
   };
 
   exports.Context = Context;
   var ARROW_SIZE = 10;
-  var ARROW_OVER_CONTENT = 4;
-  var CANVAS_INSET = 5;
+  var MIN_ARROW_DISTANCE_FROM_EDGE = 3;
   var SHADOW_BLUR = 5;
   var SHADOW_COLOR = 'rgba(144, 144, 144, 1)';
+  var SELECTION_COLOR = '#f0f0f0';
 
-  function Menu(items, $bounds, $pointTo) {
-    this._$bounds = $bounds;
-    this._$pointTo = $pointTo;
+  function Menu(context, page) {
+    this._context = context;
+    this._page = page;
+    this._background = new MenuBackground();
+
     this._$shielding = $('<div></div>').css({
       position: 'fixed',
       left: 0,
       top: 0,
       width: '100%',
-      height: '100%',
-      background: 'transparent'
-    }).click(this.hide.bind(this));
-    this._$element = $('<div></div>').css({position: 'fixed'});
-    this._$canvas = $('<canvas></canvas>').css({
-      position: 'absolute',
-      width: '100%',
       height: '100%'
-    });
-    this._$contents = $('<div></div>').css({
+    }).click(this.hide.bind(this));
+
+    this._$scrollingContent = $('<div></div>').css({
       position: 'absolute',
-      left: ARROW_SIZE + CANVAS_INSET,
-      top: CANVAS_INSET,
-      height: 'calc(100% - ' + CANVAS_INSET*2 + 'px)',
-      overflowY: 'hidden',
+      left: SHADOW_BLUR + ARROW_SIZE,
+      top: SHADOW_BLUR,
+      width: 'calc(100% - ' + (SHADOW_BLUR*2+ARROW_SIZE) + 'px)',
+      height: 'calc(100% - ' + SHADOW_BLUR*2 + 'px)',
       overflowX: 'hidden'
-    });
-    this._$element.append(this._$canvas).append(this._$contents);
-    this._screens = [items];
-    this._addItemsFromScreen(items);
-    this._showing = false;
+    }).append(this._page.element());
+
+    this._$element = $('<div></div>').css({position: 'fixed'});
+    this._$element.append(this._background.element());
+    this._$element.append(this._$scrollingContent);
+
+    this._state = Menu.STATE_INITIAL;
+    this._metrics = null;
+    this._registerPageEvents();
   }
 
+  Menu.STATE_INITIAL = 0;
+  Menu.STATE_SHOWING = 1;
+  Menu.STATE_HIDDEN = 2;
+
   Menu.prototype.hide = function() {
-    if (!this._showing) {
-      return;
+    if (this._state === Menu.STATE_SHOWING) {
+      this._$shielding.remove();
+      this._$element.remove();
+      this._state = Menu.STATE_HIDDEN;
     }
-    this._$shielding.detach();
-    this._$element.detach();
-    this._showing = false;
   };
 
   Menu.prototype.show = function() {
-    var metrics = this._computeMetrics();
-    this._updateDOMWithMetrics(metrics);
-    this._drawWithMetrics(metrics);
+    if (this._state === Menu.STATE_INITIAL) {
+      this._metrics = this._computeMetrics();
+      this._layoutWithMetrics(this._metrics);
+      this._background.setMetrics(this._metrics);
 
-    var body = $(document.body);
-    body.append(this._$shielding);
-    body.append(this._$element);
+      var $body = $(document.body);
+      $body.append(this._$shielding);
+      $body.append(this._$element);
 
-    this._showing = true;
-  };
-
-  Menu.prototype._addItemsFromScreen = function(items) {
-    for (var i = 0, len = items.length; i < len; ++i) {
-      console.log('yo, ', i, items[i].element());
-      this._$contents.append(items[i].element());
+      this._state = Menu.STATE_SHOWING;
     }
   };
 
   Menu.prototype._computeMetrics = function() {
-    var boundsPosition = this._$bounds.offset();
-    var boundsWidth = this._$bounds.width();
-    var boundsHeight = this._$bounds.height();
-    var pointToPosition = this._$pointTo.offset();
-    var pointToWidth = this._$pointTo.width();
-    var pointToHeight = this._$pointTo.height();
+    var arrowPosition = this._context.arrowPosition();
+    var bounds = this._context.containerBounds();
 
-    var result = new Metrics();
-
-    var requestedHeight = this._contentHeight() + CANVAS_INSET*2;
-    result.width = this._contentWidth() + CANVAS_INSET*2 + ARROW_SIZE;
-    result.height = Math.min(requestedHeight, boundsHeight);
-    if (boundsHeight < requestedHeight) {
-      result.scrolls = true;
-      result.scrollbarWidth = scrollbarWidth();
+    // If the arrow position is too close to the top or bottom of the bounds, we
+    // cannot point to it.
+    if (arrowPosition.top < bounds.top+ARROW_SIZE+MIN_ARROW_DISTANCE_FROM_EDGE) {
+      arrowPosition.top = bounds.top + ARROW_SIZE + MIN_ARROW_DISTANCE_FROM_EDGE;
+    } else if (arrowPosition.top > bounds.top+bounds.height-ARROW_SIZE-
+        MIN_ARROW_DISTANCE_FROM_EDGE) {
+      arrowPosition.top = bounds.top + bounds.height - ARROW_SIZE -
+        MIN_ARROW_DISTANCE_FROM_EDGE;
     }
 
-    result.x = pointToPosition.left + pointToWidth - ARROW_OVER_CONTENT -
-      CANVAS_INSET - ARROW_SIZE;
-
-    result.y = pointToPosition.top - result.height/2 + pointToHeight/2;
-    if (result.y < boundsPosition.top) {
-      result.y = boundsPosition.top;
-    } else if (result.y + result.height > boundsPosition.top + boundsHeight) {
-      result.y = boundsPosition.top + boundsHeight - result.height;
+    var height = this._page.height();
+    var width = this._page.width();
+    var scrolls = false;
+    if (height > bounds.height) {
+      scrolls = true;
+      height = bounds.height;
+      width += scrollbarWidth();
     }
 
-    result.arrowY = Math.floor(pointToPosition.top + pointToHeight/2 - result.y);
-    if (result.arrowY < CANVAS_INSET + ARROW_SIZE) {
-      result.arrowY = CANVAS_INSET + ARROW_SIZE;
-    } else if (result.arrowY > result.height - CANVAS_INSET - ARROW_SIZE) {
-      result.arrowY = result.height - CANVAS_INSET - ARROW_SIZE;
+    var pixelsAboveArrow = height / 2;
+
+    // Make sure the menu doesn't go out of the bounds.
+    if (arrowPosition.top-(height/2) < bounds.top) {
+      pixelsAboveArrow = arrowPosition.top - bounds.top;
+    } else if (arrowPosition.top+height/2 > bounds.top+bounds.height) {
+      pixelsAboveArrow = height - (bounds.top + bounds.height -
+        arrowPosition.top);
     }
 
-    return result;
+    return new Metrics({
+      width: width,
+      height: height,
+      pointX: arrowPosition.left,
+      pointY: arrowPosition.top,
+      pixelsAboveArrow: pixelsAboveArrow
+    });
   };
 
-  Menu.prototype._contentHeight = function() {
-    var height = 0;
-    var screen = this._screens[this._screens.length - 1];
-    for (var i = 0, len = screen.length; i < len; ++i) {
-      height += screen[i].height();
-    }
-    return height;
+  Menu.prototype._layoutWithMetrics = function(metrics) {
+    this._$element.css({
+      width: metrics.width + ARROW_SIZE + SHADOW_BLUR*2,
+      height: metrics.height + SHADOW_BLUR*2,
+      left: metrics.pointX - SHADOW_BLUR,
+      top: metrics.pointY - metrics.pixelsAboveArrow - SHADOW_BLUR
+    });
   };
 
-  Menu.prototype._contentWidth = function() {
-    var width = 0;
-    var screen = this._screens[this._screens.length - 1];
-    for (var i = 0, len = screen.length; i < len; ++i) {
-      width = Math.max(screen[i].minimumWidth(), width);
-    }
-    return width;
+  Menu.prototype._registerPageEvents = function() {
+    this._page._onShowHover = function(top, height) {
+      this._background.setHighlight(top-this._$scrollingContent.scrollTop(),
+        height);
+    }.bind(this);
+    this._page._onHideHover = this._background.setHighlight.bind(this._background,
+      0, 0);
   };
 
-  Menu.prototype._drawWithMetrics = function(metrics) {
-    var canvas = this._$canvas[0];
+  // A MenuBackground draws the blurb and shadow which appears in the background
+  // of a menu.
+  function MenuBackground() {
+    this._highlightTop = 0;
+    this._highlightHeight = 0;
+    this._metrics = null;
+    this._canvas = document.createElement('canvas');
+  }
+
+  MenuBackground.prototype.element = function() {
+    return $(this._canvas);
+  };
+
+  MenuBackground.prototype.setHighlight = function(top, height) {
+    this._highlightTop = top;
+    this._highlightHeight = height;
+    this._draw();
+  };
+
+  MenuBackground.prototype.setMetrics = function(metrics) {
+    this._metrics = metrics;
+    this._draw();
+  };
+
+  MenuBackground.prototype._draw = function() {
+    if (this._metrics === null) {
+      return;
+    }
+
     var scale = Math.ceil(window.crystal.getRatio());
-    var width = (metrics.width + metrics.scrollbarWidth) * scale;
-    var height = metrics.height * scale;
-    canvas.width = width;
-    canvas.height = height;
+    var inset = SHADOW_BLUR * scale;
+    var width = (this._metrics.width+ARROW_SIZE)*scale + inset*2;
+    var height = this._metrics.height*scale + inset*2;
 
-    var inset = CANVAS_INSET * scale;
-    var arrowSize = ARROW_SIZE * scale;
-    var arrowY = metrics.arrowY * scale;
+    this._canvas.width = width;
+    this._canvas.height = height;
+    this._canvas.style.width = width/scale + 'px';
+    this._canvas.style.height = height/scale + 'px';
 
-    var context = canvas.getContext('2d');
+    var context = this._canvas.getContext('2d');
+    context.clearRect(0, 0, width, height);
 
-    context.shadowBlur = SHADOW_BLUR;
+    context.shadowBlur = SHADOW_BLUR * scale;
     context.shadowColor = SHADOW_COLOR;
     context.fillStyle = 'white';
 
+    var arrowSize = ARROW_SIZE * scale;
+    var arrowY = this._metrics.pixelsAboveArrow*scale + inset;
+
+    // Draw the main blurb.
     context.beginPath();
-    context.moveTo(inset + arrowSize, inset);
-    context.lineTo(inset + arrowSize, arrowY-arrowSize);
+    context.moveTo(inset+arrowSize, inset);
+    context.lineTo(inset+arrowSize, arrowY-arrowSize);
     context.lineTo(inset, arrowY);
-    context.lineTo(inset + arrowSize, arrowY+arrowSize);
-    context.lineTo(inset + arrowSize, height - inset);
-    context.lineTo(width - inset, height - inset);
-    context.lineTo(width - inset, inset);
+    context.lineTo(inset+arrowSize, arrowY+arrowSize);
+    context.lineTo(inset+arrowSize, height-inset);
+    context.lineTo(width-inset, height-inset);
+    context.lineTo(width-inset, inset);
     context.closePath();
     context.fill();
+
+    // Draw the highlight.
+    context.shadowColor = 'transparent';
+    context.save();
+    context.clip();
+    context.fillStyle = SELECTION_COLOR;
+    context.fillRect(0, inset + this._highlightTop*scale, width,
+      this._highlightHeight*scale);
+    context.restore();
   };
 
-  Menu.prototype._updateDOMWithMetrics = function(metrics) {
-    this._$element.css({
-      top: metrics.y,
-      left: metrics.x,
-      width: metrics.width + metrics.scrollbarWidth,
-      height: metrics.height
-    });
-    this._$contents.css({width: metrics.width - ARROW_SIZE - CANVAS_INSET*2});
-  };
-
-  function Metrics() {
-    this.x = 0;
-    this.y = 0;
-    this.width = 0;
-    this.height = 0;
-    this.arrowY = 0;
-    this.scrolls = false;
-    this.scrollbarWidth = 0;
+  // Metrics stores general information about where a Menu is located and how
+  // large it is.
+  function Metrics(attrs) {
+    this.width = attrs.width;
+    this.height = attrs.height;
+    this.pointX = attrs.pointX;
+    this.pointY = attrs.pointY;
+    this.pixelsAboveArrow = attrs.pixelsAboveArrow;
   }
 
-  Metrics.prototype.copy = function() {
-    var res = new Metrics();
-    res.x = this.x;
-    res.y = this.y;
-    res.width = this.width;
-    res.height = this.height;
-    res.arrowY = this.arrowY;
-    res.scrolls = this.scrolls;
-    res.scrollbarWidth = this.scrollbarWidth;
-    return res;
-  };
-
-  function intermediateMetrics(m1, m2) {
-    // TODO: average the two Metrics.
+  function intermediateMetrics(m1, m2, fraction) {
+    var attributes = ['width', 'height', 'pointX', 'pointY', 'pixelsAboveArrow'];
+    var res = {};
+    for (var i = 0, len = attributes.length; i < len; ++i) {
+      var attribute = attributes[i];
+      res[attribute] = m1[attribute] + (m2[attribute]-m1[attribute])*fraction;
+    }
+    return new Metrics(res);
   }
 
   function scrollbarWidth() {
@@ -269,37 +298,110 @@
   // multiple pages in the form of submenus.
   function Page(rows) {
     this._rows = rows;
-    this._$element = $('<')
-  }var DEFAULT_COLOR = '#999999';
+    this._rowYValues = [];
+    this._height = 0;
+    this._width = 0;
+    this._$element = $('<div></div>');
 
-  var DEFAULT_STYLE = {
-    fontSize: 18,
-    height: 30,
-    lineHeight: '30px',
-    position: 'relative',
-    color: DEFAULT_COLOR,
-    paddingLeft: 10,
-    paddingRight: 10
+    this.onClick = null;
+    this._hoverRowIndex = -1;
+
+    // These events are used to tell the Menu to draw the hover highlight.
+    this._onShowHover = null;
+    this._onHideHover = null;
+
+    for (var i = 0, len = rows.length; i < len; ++i) {
+      var row = rows[i];
+      this._rowYValues[i] = this._height;
+      this._width = Math.max(this._width, row.minimumWidth());
+      this._height += row.height();
+      this._$element.append(row.element());
+    }
+
+    this._registerUIEvents();
+  }
+
+  Page.prototype.element = function() {
+    return this._$element;
   };
 
-  var ARROW_PADDING_RIGHT = 10;
-  var ARROW_PADDING_LEFT = 20;
+  Page.prototype.height = function() {
+    return this._height;
+  };
 
+  Page.prototype.width = function() {
+    return this._width;
+  };
+
+  Page.prototype._handleRowClick = function(index) {
+    if ('function' === typeof this.onClick) {
+      this.onClick(index);
+    }
+  };
+
+  Page.prototype._handleRowMouseEnter = function(index) {
+    if (this._rows[index].enabled()) {
+      this._hoverRowIndex = index;
+      this._showHoverForRowIndex(index);
+    }
+  };
+
+  Page.prototype._handleRowMouseLeave = function() {
+    this._hoverRowIndex = -1;
+    this._onHideHover();
+  };
+
+  Page.prototype._registerUIEvents = function() {
+    for (var i = 0, len = this._rows.length; i < len; ++i) {
+      var $rowElement = this._rows[i].element();
+      $rowElement.click(this._handleRowClick.bind(this, i));
+      $rowElement.mouseenter(this._handleRowMouseEnter.bind(this, i));
+      $rowElement.mouseleave(this._handleRowMouseLeave.bind(this));
+    }
+    this._$element.scroll(function() {
+      if (this._hoverRowIndex >= 0) {
+        this._showHoverForRowIndex(this._hoverRowIndex);
+      }
+    }.bind(this));
+  };
+
+  Page.prototype._showHoverForRowIndex = function(index) {
+    var rowYValue = this._rowYValues[index];
+    var height = this._rows[index].height();
+    this._onShowHover(rowYValue, height);
+  };
+
+  exports.Page = Page;
   function TextRow(text, style) {
     this._$element = $('<div><label></label></div>').css({
-      position: 'relative'
+      position: 'relative',
+      cursor: 'pointer'
     });
     var $label = this._$element.find('label');
-    $label.text(text).css(DEFAULT_STYLE);
+    $label.text(text).css(TextRow.DEFAULT_STYLE);
     if (style) {
       $label.css(style);
     }
     this._measure();
-    this._$element.css({minWidth: this._minWidth});
   }
+
+  TextRow.DEFAULT_STYLE = {
+    fontSize: 18,
+    height: 30,
+    lineHeight: '30px',
+    position: 'relative',
+    color: '#999999',
+    paddingLeft: 10,
+    paddingRight: 10,
+    pointerEvents: 'none'
+  };
 
   TextRow.prototype.element = function() {
     return this._$element;
+  };
+
+  TextRow.prototype.enabled = function() {
+    return true;
   };
 
   TextRow.prototype.height = function() {
@@ -340,9 +442,9 @@
       height: ExpandableRow.ARROW_HEIGHT,
       position: 'absolute',
       right: ExpandableRow.ARROW_PADDING_RIGHT,
-      top: 'calc(50% - ' + ExpandableRow.ARROW_HEIGHT/2 + 'px)'
+      top: 'calc(50% - ' + ExpandableRow.ARROW_HEIGHT/2 + 'px)',
+      pointerEvents: 'none'
     });
-    this.element().css({minWidth: this.minimumWidth(), paddingRight: 0});
     this.element().append(this._$arrow);
     this._fillCanvas();
   }
@@ -369,7 +471,7 @@
     this._$arrow[0].width = width;
     this._$arrow[0].height = height;
 
-    context.strokeStyle = DEFAULT_COLOR;
+    context.strokeStyle = this.element().find('label').css('color');
     context.lineWidth = ratio*ExpandableRow.THICKNESS;
     context.beginPath();
     context.moveTo(ratio*ExpandableRow.THICKNESS, ratio*ExpandableRow.THICKNESS);

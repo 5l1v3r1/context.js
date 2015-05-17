@@ -7,11 +7,10 @@ function Page(rows) {
   this._width = 0;
   this._$element = $('<div></div>');
 
-  this._hoveringRow = -1;
   this.onClick = null;
+  this._hoverRowIndex = -1;
 
-  // These events are passed onto the Menu so it can draw the selection
-  // properly.
+  // These events are used to tell the Menu to draw the hover highlight.
   this._onShowHover = null;
   this._onHideHover = null;
 
@@ -44,31 +43,33 @@ Page.prototype._handleRowClick = function(index) {
   }
 };
 
-Page.prototype._handleRowMouseEnter = function(row) {
-  if (row.enabled()) {
-    this._hoverRow = row;
-    this._showHoverForRow(row);
+Page.prototype._handleRowMouseEnter = function(index) {
+  if (this._rows[index].enabled()) {
+    this._hoverRowIndex = index;
+    this._showHoverForRowIndex(index);
   }
 };
 
-Page.prototype._handelRowMouseLeave = function() {
-  this._hoverRow = null;
+Page.prototype._handleRowMouseLeave = function() {
+  this._hoverRowIndex = -1;
   this._onHideHover();
 };
 
 Page.prototype._registerUIEvents = function() {
   for (var i = 0, len = this._rows.length; i < len; ++i) {
-    var row = this._rows[i];
-    row.click(this._handleRowClick.bind(this, i));
-    row.mouseenter(this._handleRowMouseEnter.bind(this, i));
-    row.mouseleave(this._handleRowMouseLeave.bind(this));
+    var $rowElement = this._rows[i].element();
+    $rowElement.click(this._handleRowClick.bind(this, i));
+    $rowElement.mouseenter(this._handleRowMouseEnter.bind(this, i));
+    $rowElement.mouseleave(this._handleRowMouseLeave.bind(this));
   }
   this._$element.scroll(function() {
-
-  });
+    if (this._hoverRowIndex >= 0) {
+      this._showHoverForRowIndex(this._hoverRowIndex);
+    }
+  }.bind(this));
 };
 
-Page.prototype._showHoverForRow = function(index) {
+Page.prototype._showHoverForRowIndex = function(index) {
   var rowYValue = this._rowYValues[index];
   var height = this._rows[index].height();
   this._onShowHover(rowYValue, height);

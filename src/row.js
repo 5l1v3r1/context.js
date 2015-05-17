@@ -18,7 +18,8 @@ TextRow.DEFAULT_STYLE = {
   position: 'relative',
   color: '#999999',
   paddingLeft: 10,
-  paddingRight: 10
+  paddingRight: 10,
+  pointerEvents: 'none'
 };
 
 TextRow.prototype.element = function() {
@@ -67,7 +68,8 @@ function ExpandableRow(text, style) {
     height: ExpandableRow.ARROW_HEIGHT,
     position: 'absolute',
     right: ExpandableRow.ARROW_PADDING_RIGHT,
-    top: 'calc(50% - ' + ExpandableRow.ARROW_HEIGHT/2 + 'px)'
+    top: 'calc(50% - ' + ExpandableRow.ARROW_HEIGHT/2 + 'px)',
+    pointerEvents: 'none'
   });
   this.element().append(this._$arrow);
   this._fillCanvas();

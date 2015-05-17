@@ -1,4 +1,5 @@
 var ARROW_SIZE = 10;
+var MIN_ARROW_DISTANCE_FROM_EDGE = 3;
 var SHADOW_BLUR = 5;
 var SHADOW_COLOR = 'rgba(144, 144, 144, 1)';
 var SELECTION_COLOR = '#f0f0f0';
@@ -6,27 +7,118 @@ var SELECTION_COLOR = '#f0f0f0';
 function Menu(context, page) {
   this._context = context;
   this._page = page;
+  this._background = new MenuBackground();
 
   this._$shielding = $('<div></div>').css({
     position: 'fixed',
     left: 0,
     top: 0,
     width: '100%',
-    height: '100%',
-    background: 'transparent'
+    height: '100%'
   }).click(this.hide.bind(this));
-  
-  this._background = new MenuBackground();
-  
-  // TODO: implement the rest of this method.
+
+  this._$scrollingContent = $('<div></div>').css({
+    position: 'absolute',
+    left: SHADOW_BLUR + ARROW_SIZE,
+    top: SHADOW_BLUR,
+    width: 'calc(100% - ' + (SHADOW_BLUR*2+ARROW_SIZE) + 'px)',
+    height: 'calc(100% - ' + SHADOW_BLUR*2 + 'px)',
+    overflowX: 'hidden'
+  }).append(this._page.element());
+
+  this._$element = $('<div></div>').css({position: 'fixed'});
+  this._$element.append(this._background.element());
+  this._$element.append(this._$scrollingContent);
+
+  this._state = Menu.STATE_INITIAL;
+  this._metrics = null;
+  this._registerPageEvents();
 }
 
+Menu.STATE_INITIAL = 0;
+Menu.STATE_SHOWING = 1;
+Menu.STATE_HIDDEN = 2;
+
 Menu.prototype.hide = function() {
-  // TODO: this.
+  if (this._state === Menu.STATE_SHOWING) {
+    this._$shielding.remove();
+    this._$element.remove();
+    this._state = Menu.STATE_HIDDEN;
+  }
 };
 
 Menu.prototype.show = function() {
-  // TODO: this.
+  if (this._state === Menu.STATE_INITIAL) {
+    this._metrics = this._computeMetrics();
+    this._layoutWithMetrics(this._metrics);
+    this._background.setMetrics(this._metrics);
+    
+    var $body = $(document.body);
+    $body.append(this._$shielding);
+    $body.append(this._$element);
+    
+    this._state = Menu.STATE_SHOWING;
+  }
+};
+
+Menu.prototype._computeMetrics = function() {
+  var arrowPosition = this._context.arrowPosition();
+  var bounds = this._context.containerBounds();
+
+  // If the arrow position is too close to the top or bottom of the bounds, we
+  // cannot point to it.
+  if (arrowPosition.top < bounds.top+ARROW_SIZE+MIN_ARROW_DISTANCE_FROM_EDGE) {
+    arrowPosition.top = bounds.top + ARROW_SIZE + MIN_ARROW_DISTANCE_FROM_EDGE;
+  } else if (arrowPosition.top > bounds.top+bounds.height-ARROW_SIZE-
+      MIN_ARROW_DISTANCE_FROM_EDGE) {
+    arrowPosition.top = bounds.top + bounds.height - ARROW_SIZE -
+      MIN_ARROW_DISTANCE_FROM_EDGE;
+  }
+
+  var height = this._page.height();
+  var width = this._page.width();
+  var scrolls = false;
+  if (height > bounds.height) {
+    scrolls = true;
+    height = bounds.height;
+    width += scrollbarWidth();
+  }
+
+  var pixelsAboveArrow = height / 2;
+
+  // Make sure the menu doesn't go out of the bounds.
+  if (arrowPosition.top-(height/2) < bounds.top) {
+    pixelsAboveArrow = arrowPosition.top - bounds.top;
+  } else if (arrowPosition.top+height/2 > bounds.top+bounds.height) {
+    pixelsAboveArrow = height - (bounds.top + bounds.height -
+      arrowPosition.top);
+  }
+  
+  return new Metrics({
+    width: width,
+    height: height,
+    pointX: arrowPosition.left,
+    pointY: arrowPosition.top,
+    pixelsAboveArrow: pixelsAboveArrow
+  });
+};
+
+Menu.prototype._layoutWithMetrics = function(metrics) {
+  this._$element.css({
+    width: metrics.width + ARROW_SIZE + SHADOW_BLUR*2,
+    height: metrics.height + SHADOW_BLUR*2,
+    left: metrics.pointX - SHADOW_BLUR,
+    top: metrics.pointY - metrics.pixelsAboveArrow - SHADOW_BLUR
+  });
+};
+
+Menu.prototype._registerPageEvents = function() {
+  this._page._onShowHover = function(top, height) {
+    this._background.setHighlight(top-this._$scrollingContent.scrollTop(),
+      height);
+  }.bind(this);
+  this._page._onHideHover = this._background.setHighlight.bind(this._background,
+    0, 0);
 };
 
 // A MenuBackground draws the blurb and shadow which appears in the background
@@ -37,6 +129,10 @@ function MenuBackground() {
   this._metrics = null;
   this._canvas = document.createElement('canvas');
 }
+
+MenuBackground.prototype.element = function() {
+  return $(this._canvas);
+};
 
 MenuBackground.prototype.setHighlight = function(top, height) {
   this._highlightTop = top;
@@ -67,7 +163,7 @@ MenuBackground.prototype._draw = function() {
   var context = this._canvas.getContext('2d');
   context.clearRect(0, 0, width, height);
 
-  context.shadowBlur = SHADOW_BLUR;
+  context.shadowBlur = SHADOW_BLUR * scale;
   context.shadowColor = SHADOW_COLOR;
   context.fillStyle = 'white';
 
@@ -87,11 +183,12 @@ MenuBackground.prototype._draw = function() {
   context.fill();
 
   // Draw the highlight.
+  context.shadowColor = 'transparent';
   context.save();
   context.clip();
   context.fillStyle = SELECTION_COLOR;
-  context.fillRect(0, this._highlightTop*scale, width,
-    (this._highlightTop+this._highlightHeight)*scale);
+  context.fillRect(0, inset + this._highlightTop*scale, width,
+    this._highlightHeight*scale);
   context.restore();
 };
 
