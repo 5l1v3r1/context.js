@@ -8,6 +8,7 @@ function Menu(context, page) {
   this._context = context;
   this._page = page;
   this._background = new MenuBackground();
+  this._backstack = [];
 
   this._$shielding = $('<div></div>').css({
     position: 'fixed',
@@ -31,6 +32,7 @@ function Menu(context, page) {
   this._$element.append(this._$scrollingContent);
 
   this._state = Menu.STATE_INITIAL;
+  this._animating = false;
   this._metrics = null;
   this._registerPageEvents();
 }
@@ -47,6 +49,24 @@ Menu.prototype.hide = function() {
   }
 };
 
+Menu.prototype.popPage = function() {
+  if (this._animating) {
+    return;
+  } else if (this._backstack.length === 0) {
+    throw new Error('nothing to go back to');
+  }
+  this._startAnimation(this._backstack.pop(),
+    SlideAnimation.DIRECTION_FORWARDS);
+};
+
+Menu.prototype.pushPage = function(page) {
+  if (this._animating) {
+    return;
+  }
+  this._backstack.push(this._page);
+  this._startAnimation(page, SlideAnimation.DIRECTION_FORWARDS);
+};
+
 Menu.prototype.show = function() {
   if (this._state === Menu.STATE_INITIAL) {
     this._metrics = this._computeMetrics();
@@ -59,6 +79,18 @@ Menu.prototype.show = function() {
     
     this._state = Menu.STATE_SHOWING;
   }
+};
+
+Menu.prototype._animationCompleted = function() {
+  this._animating = false;
+  this._metrics = this._computeMetrics();
+  this._layoutWithMetrics(this._metrics);
+  this._background.setMetrics(this._metrics);
+};
+
+Menu.prototype._animationFrame = function(metrics) {
+  this._layoutWithMetrics(metrics);
+  this._background.setMetrics(metrics);
 };
 
 Menu.prototype._computeMetrics = function() {
@@ -99,7 +131,8 @@ Menu.prototype._computeMetrics = function() {
     height: height,
     pointX: arrowPosition.left,
     pointY: arrowPosition.top,
-    pixelsAboveArrow: pixelsAboveArrow
+    pixelsAboveArrow: pixelsAboveArrow,
+    scrolls: scrolls
   });
 };
 
@@ -110,6 +143,9 @@ Menu.prototype._layoutWithMetrics = function(metrics) {
     left: metrics.pointX - SHADOW_BLUR,
     top: metrics.pointY - metrics.pixelsAboveArrow - SHADOW_BLUR
   });
+  this._$scrollingContent.css({
+    overflowY: metrics.scroll ? 'scroll' : 'hidden'
+  });
 };
 
 Menu.prototype._registerPageEvents = function() {
@@ -119,6 +155,16 @@ Menu.prototype._registerPageEvents = function() {
   }.bind(this);
   this._page._onHideHover = this._background.setHighlight.bind(this._background,
     0, 0);
+};
+
+Menu.prototype._startAnimation = function(page, direction) {
+  var initialMetrics = this._metrics;
+  this._animating = true;
+  this._page.element().detach();
+  this._page = page;
+  new SlideAnimation(initialMetrics, this._computeMetrics(), page, direction,
+    this._animationFrame.bind(this), this._animationDone.bind(this));
+  this._$element.append(this._page.element());
 };
 
 // A MenuBackground draws the blurb and shadow which appears in the background
@@ -192,6 +238,60 @@ MenuBackground.prototype._draw = function() {
   context.restore();
 };
 
+// A SlideAnimation facilitates the page transition for a Menu.
+function SlideAnimation(startMetrics, endMetrics, newPage, direction,
+    metricsCb, doneCb) {
+  this._startMetrics = startMetrics;
+  this._endMetrics = endMetrics;
+  this._newPage = newPage;
+  this._direction = direction;
+  this._metricsCb = metricsCb;
+  this._doneCb = doneCb;
+  this._start = new Date();
+  this._tick();
+}
+
+SlideAnimation.DIRECTION_FORWARDS = 0;
+SlideAnimation.DIRECTION_BACK = 1;
+SlideAnimation.DURATION = 0.4;
+
+SlideAnimation.prototype._registerNextTick = function() {
+  if ('function' === typeof window.requestAnimationFrame) {
+    window.requestAnimationFrame(this._tick.bind(this));
+  } else {
+    setTimeout(this._tick.bind(this), 1000/60);
+  }
+};
+
+SlideAnimation.prototype._tick = function() {
+  var elapsed = Math.max(new Date().getTime()-this._start, 0);
+  var percent = Math.min(elapsed/SlideAnimation.DURATION, 1);
+  this._updateLeft(percent);
+  this._updateMetrics(percent);
+  if (percent === 1) {
+    this._doneCb();
+  } else {
+    this._registerNextTick();
+  }
+};
+
+SlideAnimation.prototype._updateLeft = function(percent) {
+  var leftPercent = Math.min(percent*2, 1);
+  var initialLeft = 0;
+  if (this._direction === SlideAnimation.DIRECTION_FORWARDS) {
+    initialLeft = this._endMetrics.width;
+  } else {
+    initialLeft = -this._newPage.width();
+  }
+  this._newPage.css({left: (1 - leftPercent) * initialLeft});
+}
+
+SlideAnimation.prototype._updateMetrics = function(percent) {
+  var metricsPercent = Math.max(percent*2 - 1, 0);
+  this._metricsCb(intermediateMetrics(this._startMetrics, this._endMetrics,
+    metricsPercent));
+};
+
 // Metrics stores general information about where a Menu is located and how
 // large it is.
 function Metrics(attrs) {
@@ -200,6 +300,7 @@ function Metrics(attrs) {
   this.pointX = attrs.pointX;
   this.pointY = attrs.pointY;
   this.pixelsAboveArrow = attrs.pixelsAboveArrow;
+  this.scrolls = attrs.scrolls;
 }
 
 function intermediateMetrics(m1, m2, fraction) {
@@ -209,6 +310,7 @@ function intermediateMetrics(m1, m2, fraction) {
     var attribute = attributes[i];
     res[attribute] = m1[attribute] + (m2[attribute]-m1[attribute])*fraction;
   }
+  res.scrolls = (fraction < 1 ? false : m2.scrolls);
   return new Metrics(res);
 }
 
