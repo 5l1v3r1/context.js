@@ -1,33 +1,32 @@
-var DEFAULT_COLOR = '#999999';
-
-var DEFAULT_STYLE = {
-  fontSize: 18,
-  height: 30,
-  lineHeight: '30px',
-  position: 'relative',
-  color: DEFAULT_COLOR,
-  paddingLeft: 10,
-  paddingRight: 10
-};
-
-var ARROW_PADDING_RIGHT = 10;
-var ARROW_PADDING_LEFT = 20;
-
 function TextRow(text, style) {
   this._$element = $('<div><label></label></div>').css({
-    position: 'relative'
+    position: 'relative',
+    cursor: 'pointer'
   });
   var $label = this._$element.find('label');
-  $label.text(text).css(DEFAULT_STYLE);
+  $label.text(text).css(TextRow.DEFAULT_STYLE);
   if (style) {
     $label.css(style);
   }
   this._measure();
-  this._$element.css({minWidth: this._minWidth});
 }
+
+TextRow.DEFAULT_STYLE = {
+  fontSize: 18,
+  height: 30,
+  lineHeight: '30px',
+  position: 'relative',
+  color: '#999999',
+  paddingLeft: 10,
+  paddingRight: 10
+};
 
 TextRow.prototype.element = function() {
   return this._$element;
+};
+
+TextRow.prototype.enabled = function() {
+  return true;
 };
 
 TextRow.prototype.height = function() {
@@ -70,7 +69,6 @@ function ExpandableRow(text, style) {
     right: ExpandableRow.ARROW_PADDING_RIGHT,
     top: 'calc(50% - ' + ExpandableRow.ARROW_HEIGHT/2 + 'px)'
   });
-  this.element().css({minWidth: this.minimumWidth(), paddingRight: 0});
   this.element().append(this._$arrow);
   this._fillCanvas();
 }
@@ -97,7 +95,7 @@ ExpandableRow.prototype._fillCanvas = function() {
   this._$arrow[0].width = width;
   this._$arrow[0].height = height;
   
-  context.strokeStyle = DEFAULT_COLOR;
+  context.strokeStyle = this.element().find('label').css('color');
   context.lineWidth = ratio*ExpandableRow.THICKNESS;
   context.beginPath();
   context.moveTo(ratio*ExpandableRow.THICKNESS, ratio*ExpandableRow.THICKNESS);
