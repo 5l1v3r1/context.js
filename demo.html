@@ -52,11 +52,48 @@
           new window.contextjs.TextRow('Cut'),
           new window.contextjs.TextRow('Copy'),
           new window.contextjs.TextRow('Paste'),
-          new window.contextjs.ExpandableRow('Move To Puzzle')
+          new window.contextjs.ExpandableRow('Move To Puzzle'),
+          new window.contextjs.ExpandableRow('Type'),
         ]);
+        var page2 = new window.contextjs.Page([
+          new window.contextjs.BackRow('Move To Puzzle'),
+          new window.contextjs.TextRow('3x3x3'),
+          new window.contextjs.TextRow('2x2x2'),
+          new window.contextjs.TextRow('2x2x2'),
+          new window.contextjs.TextRow('2x2x2'),
+          new window.contextjs.TextRow('2x2x2'),
+          new window.contextjs.TextRow('2x2x2'),
+          new window.contextjs.TextRow('2x2x2'),
+          new window.contextjs.TextRow('2x2x2'),
+          new window.contextjs.TextRow('2x2x2'),
+          new window.contextjs.TextRow('2x2x2'),
+          new window.contextjs.TextRow('2x2x2')
+        ]);
+        var page3 = new window.contextjs.Page([
+          new window.contextjs.BackRow('Type'),
+          new window.contextjs.TextRow('Regular'),
+          new window.contextjs.TextRow('Fancy'),
+        ]);
+        page1.onClick = function(idx) {
+          if (idx === 3) {
+            menu.pushPage(page2);
+          } else if (idx === 4) {
+            menu.pushPage(page3);
+          } else {
+            menu.hide();
+          }
+        };
+        page2.onClick = function(idx) {
+          if (idx === 0) {
+            menu.popPage();
+          } else {
+            menu.hide();
+          }
+        };
+        page3.onClick = page2.onClick;
         var context = new window.contextjs.Context($(this),
           $('.clicker-contents'));
-        menu = new window.contextjs.Menu(context, page);
+        menu = new window.contextjs.Menu(context, page1);
         menu.show();
       });
     });

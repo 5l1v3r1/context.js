@@ -8,7 +8,6 @@ function Page(rows) {
   this._$element = $('<div></div>');
 
   this.onClick = null;
-  this._hoverRowIndex = -1;
 
   // These events are used to tell the Menu to draw the hover highlight.
   this._onShowHover = null;
@@ -21,6 +20,8 @@ function Page(rows) {
     this._height += row.height();
     this._$element.append(row.element());
   }
+  
+  this._$element.css({width: this._width, height: this._height});
 
   this._registerUIEvents();
 }
@@ -45,8 +46,9 @@ Page.prototype._handleRowClick = function(index) {
 
 Page.prototype._handleRowMouseEnter = function(index) {
   if (this._rows[index].enabled()) {
-    this._hoverRowIndex = index;
-    this._showHoverForRowIndex(index);
+    var rowYValue = this._rowYValues[index];
+    var height = this._rows[index].height();
+    this._onShowHover(rowYValue, height);
   }
 };
 
@@ -62,17 +64,6 @@ Page.prototype._registerUIEvents = function() {
     $rowElement.mouseenter(this._handleRowMouseEnter.bind(this, i));
     $rowElement.mouseleave(this._handleRowMouseLeave.bind(this));
   }
-  this._$element.scroll(function() {
-    if (this._hoverRowIndex >= 0) {
-      this._showHoverForRowIndex(this._hoverRowIndex);
-    }
-  }.bind(this));
-};
-
-Page.prototype._showHoverForRowIndex = function(index) {
-  var rowYValue = this._rowYValues[index];
-  var height = this._rows[index].height();
-  this._onShowHover(rowYValue, height);
 };
 
 exports.Page = Page;

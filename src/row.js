@@ -47,10 +47,10 @@ TextRow.prototype._measure = function() {
     visibility: 'hidden'
   });
   $(document.body).append(this._$element);
-  
+
   this._minWidth = this._$element.width();
   this._height = this._$element.height();
-  
+
   this._$element.detach();
   this._$element.css({
     display: 'block',
@@ -76,17 +76,15 @@ function ExpandableRow(text, style) {
 }
 
 ExpandableRow.ARROW_PADDING_RIGHT = 10;
-ExpandableRow.ARROW_PADDING_LEFT = 0;
 ExpandableRow.ARROW_WIDTH = 10;
 ExpandableRow.ARROW_HEIGHT = 15;
-ExpandableRow.THICKNESS = 2;
+ExpandableRow.ARROW_THICKNESS = 2;
 
 ExpandableRow.prototype = Object.create(TextRow.prototype);
 
 ExpandableRow.prototype.minimumWidth = function() {
-  return TextRow.prototype.minimumWidth.call(this) +
-    ExpandableRow.ARROW_WIDTH + ExpandableRow.ARROW_PADDING_LEFT +
-    ExpandableRow.ARROW_PADDING_RIGHT;
+  return ExpandableRow.ARROW_WIDTH + ExpandableRow.ARROW_PADDING_RIGHT +
+    TextRow.prototype.minimumWidth.call(this);
 };
 
 ExpandableRow.prototype._fillCanvas = function() {
@@ -96,17 +94,67 @@ ExpandableRow.prototype._fillCanvas = function() {
   var height = ratio * ExpandableRow.ARROW_HEIGHT;
   this._$arrow[0].width = width;
   this._$arrow[0].height = height;
-  
+
   context.strokeStyle = this.element().find('label').css('color');
-  context.lineWidth = ratio*ExpandableRow.THICKNESS;
+  context.lineWidth = ratio * ExpandableRow.ARROW_THICKNESS;
   context.beginPath();
-  context.moveTo(ratio*ExpandableRow.THICKNESS, ratio*ExpandableRow.THICKNESS);
-  context.lineTo(width-ratio*ExpandableRow.THICKNESS, height/2);
-  context.lineTo(ratio*ExpandableRow.THICKNESS,
-    height-ratio*ExpandableRow.THICKNESS);
+  context.moveTo(ratio*ExpandableRow.ARROW_THICKNESS,
+    ratio*ExpandableRow.ARROW_THICKNESS);
+  context.lineTo(width-ratio*ExpandableRow.ARROW_THICKNESS, height/2);
+  context.lineTo(ratio*ExpandableRow.ARROW_THICKNESS,
+    height-ratio*ExpandableRow.ARROW_THICKNESS);
+  context.stroke();
+  context.closePath();
+};
+
+function BackRow(text, style) {
+  if (!style) {
+    style = {};
+  }
+  style.paddingLeft = BackRow.ARROW_WIDTH + BackRow.ARROW_PADDING_LEFT +
+    BackRow.ARROW_PADDING_RIGHT;
+  TextRow.call(this, text, style);
+
+  this._$arrow = $('<canvas></canvas>').css({
+    width: BackRow.ARROW_WIDTH,
+    height: BackRow.ARROW_HEIGHT,
+    position: 'absolute',
+    left: BackRow.ARROW_PADDING_LEFT,
+    top: 'calc(50% - ' + BackRow.ARROW_HEIGHT/2 + 'px)',
+    pointerEvents: 'none'
+  });
+  this.element().append(this._$arrow);
+  this._fillCanvas();
+}
+
+BackRow.ARROW_PADDING_LEFT = 10;
+BackRow.ARROW_PADDING_RIGHT = 10;
+BackRow.ARROW_WIDTH = 10;
+BackRow.ARROW_HEIGHT = 15;
+BackRow.ARROW_THICKNESS = 2;
+
+BackRow.prototype = Object.create(TextRow.prototype);
+
+BackRow.prototype._fillCanvas = function() {
+  var context = this._$arrow[0].getContext('2d');
+  var ratio = Math.ceil(window.crystal.getRatio());
+  var width = ratio * BackRow.ARROW_WIDTH;
+  var height = ratio * BackRow.ARROW_HEIGHT;
+  this._$arrow[0].width = width;
+  this._$arrow[0].height = height;
+
+  context.strokeStyle = this.element().find('label').css('color');
+  context.lineWidth = ratio * BackRow.ARROW_THICKNESS;
+  context.beginPath();
+  context.moveTo(width-ratio*BackRow.ARROW_THICKNESS,
+    ratio*BackRow.ARROW_THICKNESS);
+  context.lineTo(ratio*BackRow.ARROW_THICKNESS, height/2);
+  context.lineTo(width-ratio*BackRow.ARROW_THICKNESS,
+    height-ratio*BackRow.ARROW_THICKNESS);
   context.stroke();
   context.closePath();
 };
 
 exports.TextRow = TextRow;
 exports.ExpandableRow = ExpandableRow;
+exports.BackRow = BackRow;

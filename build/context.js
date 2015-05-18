@@ -96,6 +96,7 @@
     this._registerPageEvents();
   }
 
+  Menu.FADE_DURATION = 150;
   Menu.STATE_INITIAL = 0;
   Menu.STATE_SHOWING = 1;
   Menu.STATE_HIDDEN = 2;
@@ -103,7 +104,9 @@
   Menu.prototype.hide = function() {
     if (this._state === Menu.STATE_SHOWING) {
       this._$shielding.remove();
-      this._$element.remove();
+      this._$element.fadeOut(Menu.FADE_DURATION, function() {
+        $(this).remove();
+      }).css({pointerEvents: 'none'});
       this._state = Menu.STATE_HIDDEN;
     }
   };
@@ -115,7 +118,7 @@
       throw new Error('nothing to go back to');
     }
     this._startAnimation(this._backstack.pop(),
-      SlideAnimation.DIRECTION_FORWARDS);
+      SlideAnimation.DIRECTION_BACKWARDS);
   };
 
   Menu.prototype.pushPage = function(page) {
@@ -145,6 +148,7 @@
     this._metrics = this._computeMetrics();
     this._layoutWithMetrics(this._metrics);
     this._background.setMetrics(this._metrics);
+    this._page.element().css({pointerEvents: ''});
   };
 
   Menu.prototype._animationFrame = function(metrics) {
@@ -203,7 +207,7 @@
       top: metrics.pointY - metrics.pixelsAboveArrow - SHADOW_BLUR
     });
     this._$scrollingContent.css({
-      overflowY: metrics.scroll ? 'scroll' : 'hidden'
+      overflowY: metrics.scrolls ? 'scroll' : 'hidden'
     });
   };
 
@@ -221,9 +225,14 @@
     this._animating = true;
     this._page.element().detach();
     this._page = page;
+
     new SlideAnimation(initialMetrics, this._computeMetrics(), page, direction,
-      this._animationFrame.bind(this), this._animationDone.bind(this));
-    this._$element.append(this._page.element());
+      this._animationFrame.bind(this), this._animationCompleted.bind(this));
+
+    this._page.element().css({pointerEvents: 'none', position: 'relative'});
+    this._registerPageEvents();
+    this._$scrollingContent.append(this._page.element());
+    this._background.setHighlight(0, 0);
   };
 
   // A MenuBackground draws the blurb and shadow which appears in the background
@@ -312,7 +321,7 @@
 
   SlideAnimation.DIRECTION_FORWARDS = 0;
   SlideAnimation.DIRECTION_BACK = 1;
-  SlideAnimation.DURATION = 0.4;
+  SlideAnimation.DURATION = 300;
 
   SlideAnimation.prototype._registerNextTick = function() {
     if ('function' === typeof window.requestAnimationFrame) {
@@ -342,7 +351,7 @@
     } else {
       initialLeft = -this._newPage.width();
     }
-    this._newPage.css({left: (1 - leftPercent) * initialLeft});
+    this._newPage.element().css({left: (1 - leftPercent) * initialLeft});
   }
 
   SlideAnimation.prototype._updateMetrics = function(percent) {
@@ -406,7 +415,6 @@
     this._$element = $('<div></div>');
 
     this.onClick = null;
-    this._hoverRowIndex = -1;
 
     // These events are used to tell the Menu to draw the hover highlight.
     this._onShowHover = null;
@@ -419,6 +427,8 @@
       this._height += row.height();
       this._$element.append(row.element());
     }
+
+    this._$element.css({width: this._width, height: this._height});
 
     this._registerUIEvents();
   }
@@ -443,8 +453,9 @@
 
   Page.prototype._handleRowMouseEnter = function(index) {
     if (this._rows[index].enabled()) {
-      this._hoverRowIndex = index;
-      this._showHoverForRowIndex(index);
+      var rowYValue = this._rowYValues[index];
+      var height = this._rows[index].height();
+      this._onShowHover(rowYValue, height);
     }
   };
 
@@ -460,17 +471,6 @@
       $rowElement.mouseenter(this._handleRowMouseEnter.bind(this, i));
       $rowElement.mouseleave(this._handleRowMouseLeave.bind(this));
     }
-    this._$element.scroll(function() {
-      if (this._hoverRowIndex >= 0) {
-        this._showHoverForRowIndex(this._hoverRowIndex);
-      }
-    }.bind(this));
-  };
-
-  Page.prototype._showHoverForRowIndex = function(index) {
-    var rowYValue = this._rowYValues[index];
-    var height = this._rows[index].height();
-    this._onShowHover(rowYValue, height);
   };
 
   exports.Page = Page;
@@ -552,17 +552,15 @@
   }
 
   ExpandableRow.ARROW_PADDING_RIGHT = 10;
-  ExpandableRow.ARROW_PADDING_LEFT = 0;
   ExpandableRow.ARROW_WIDTH = 10;
   ExpandableRow.ARROW_HEIGHT = 15;
-  ExpandableRow.THICKNESS = 2;
+  ExpandableRow.ARROW_THICKNESS = 2;
 
   ExpandableRow.prototype = Object.create(TextRow.prototype);
 
   ExpandableRow.prototype.minimumWidth = function() {
-    return TextRow.prototype.minimumWidth.call(this) +
-      ExpandableRow.ARROW_WIDTH + ExpandableRow.ARROW_PADDING_LEFT +
-      ExpandableRow.ARROW_PADDING_RIGHT;
+    return ExpandableRow.ARROW_WIDTH + ExpandableRow.ARROW_PADDING_RIGHT +
+      TextRow.prototype.minimumWidth.call(this);
   };
 
   ExpandableRow.prototype._fillCanvas = function() {
@@ -574,17 +572,67 @@
     this._$arrow[0].height = height;
 
     context.strokeStyle = this.element().find('label').css('color');
-    context.lineWidth = ratio*ExpandableRow.THICKNESS;
+    context.lineWidth = ratio * ExpandableRow.ARROW_THICKNESS;
     context.beginPath();
-    context.moveTo(ratio*ExpandableRow.THICKNESS, ratio*ExpandableRow.THICKNESS);
-    context.lineTo(width-ratio*ExpandableRow.THICKNESS, height/2);
-    context.lineTo(ratio*ExpandableRow.THICKNESS,
-      height-ratio*ExpandableRow.THICKNESS);
+    context.moveTo(ratio*ExpandableRow.ARROW_THICKNESS,
+      ratio*ExpandableRow.ARROW_THICKNESS);
+    context.lineTo(width-ratio*ExpandableRow.ARROW_THICKNESS, height/2);
+    context.lineTo(ratio*ExpandableRow.ARROW_THICKNESS,
+      height-ratio*ExpandableRow.ARROW_THICKNESS);
+    context.stroke();
+    context.closePath();
+  };
+
+  function BackRow(text, style) {
+    if (!style) {
+      style = {};
+    }
+    style.paddingLeft = BackRow.ARROW_WIDTH + BackRow.ARROW_PADDING_LEFT +
+      BackRow.ARROW_PADDING_RIGHT;
+    TextRow.call(this, text, style);
+
+    this._$arrow = $('<canvas></canvas>').css({
+      width: BackRow.ARROW_WIDTH,
+      height: BackRow.ARROW_HEIGHT,
+      position: 'absolute',
+      left: BackRow.ARROW_PADDING_LEFT,
+      top: 'calc(50% - ' + BackRow.ARROW_HEIGHT/2 + 'px)',
+      pointerEvents: 'none'
+    });
+    this.element().append(this._$arrow);
+    this._fillCanvas();
+  }
+
+  BackRow.ARROW_PADDING_LEFT = 10;
+  BackRow.ARROW_PADDING_RIGHT = 10;
+  BackRow.ARROW_WIDTH = 10;
+  BackRow.ARROW_HEIGHT = 15;
+  BackRow.ARROW_THICKNESS = 2;
+
+  BackRow.prototype = Object.create(TextRow.prototype);
+
+  BackRow.prototype._fillCanvas = function() {
+    var context = this._$arrow[0].getContext('2d');
+    var ratio = Math.ceil(window.crystal.getRatio());
+    var width = ratio * BackRow.ARROW_WIDTH;
+    var height = ratio * BackRow.ARROW_HEIGHT;
+    this._$arrow[0].width = width;
+    this._$arrow[0].height = height;
+
+    context.strokeStyle = this.element().find('label').css('color');
+    context.lineWidth = ratio * BackRow.ARROW_THICKNESS;
+    context.beginPath();
+    context.moveTo(width-ratio*BackRow.ARROW_THICKNESS,
+      ratio*BackRow.ARROW_THICKNESS);
+    context.lineTo(ratio*BackRow.ARROW_THICKNESS, height/2);
+    context.lineTo(width-ratio*BackRow.ARROW_THICKNESS,
+      height-ratio*BackRow.ARROW_THICKNESS);
     context.stroke();
     context.closePath();
   };
 
   exports.TextRow = TextRow;
   exports.ExpandableRow = ExpandableRow;
+  exports.BackRow = BackRow;
 
 })();

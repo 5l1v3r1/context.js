@@ -37,6 +37,7 @@ function Menu(context, page) {
   this._registerPageEvents();
 }
 
+Menu.FADE_DURATION = 150;
 Menu.STATE_INITIAL = 0;
 Menu.STATE_SHOWING = 1;
 Menu.STATE_HIDDEN = 2;
@@ -44,7 +45,9 @@ Menu.STATE_HIDDEN = 2;
 Menu.prototype.hide = function() {
   if (this._state === Menu.STATE_SHOWING) {
     this._$shielding.remove();
-    this._$element.remove();
+    this._$element.fadeOut(Menu.FADE_DURATION, function() {
+      $(this).remove();
+    }).css({pointerEvents: 'none'});
     this._state = Menu.STATE_HIDDEN;
   }
 };
@@ -56,7 +59,7 @@ Menu.prototype.popPage = function() {
     throw new Error('nothing to go back to');
   }
   this._startAnimation(this._backstack.pop(),
-    SlideAnimation.DIRECTION_FORWARDS);
+    SlideAnimation.DIRECTION_BACKWARDS);
 };
 
 Menu.prototype.pushPage = function(page) {
@@ -72,11 +75,11 @@ Menu.prototype.show = function() {
     this._metrics = this._computeMetrics();
     this._layoutWithMetrics(this._metrics);
     this._background.setMetrics(this._metrics);
-    
+
     var $body = $(document.body);
     $body.append(this._$shielding);
     $body.append(this._$element);
-    
+
     this._state = Menu.STATE_SHOWING;
   }
 };
@@ -86,6 +89,7 @@ Menu.prototype._animationCompleted = function() {
   this._metrics = this._computeMetrics();
   this._layoutWithMetrics(this._metrics);
   this._background.setMetrics(this._metrics);
+  this._page.element().css({pointerEvents: ''});
 };
 
 Menu.prototype._animationFrame = function(metrics) {
@@ -125,7 +129,7 @@ Menu.prototype._computeMetrics = function() {
     pixelsAboveArrow = height - (bounds.top + bounds.height -
       arrowPosition.top);
   }
-  
+
   return new Metrics({
     width: width,
     height: height,
@@ -144,7 +148,7 @@ Menu.prototype._layoutWithMetrics = function(metrics) {
     top: metrics.pointY - metrics.pixelsAboveArrow - SHADOW_BLUR
   });
   this._$scrollingContent.css({
-    overflowY: metrics.scroll ? 'scroll' : 'hidden'
+    overflowY: metrics.scrolls ? 'scroll' : 'hidden'
   });
 };
 
@@ -162,9 +166,14 @@ Menu.prototype._startAnimation = function(page, direction) {
   this._animating = true;
   this._page.element().detach();
   this._page = page;
+
   new SlideAnimation(initialMetrics, this._computeMetrics(), page, direction,
-    this._animationFrame.bind(this), this._animationDone.bind(this));
-  this._$element.append(this._page.element());
+    this._animationFrame.bind(this), this._animationCompleted.bind(this));
+
+  this._page.element().css({pointerEvents: 'none', position: 'relative'});
+  this._registerPageEvents();
+  this._$scrollingContent.append(this._page.element());
+  this._background.setHighlight(0, 0);
 };
 
 // A MenuBackground draws the blurb and shadow which appears in the background
@@ -253,7 +262,7 @@ function SlideAnimation(startMetrics, endMetrics, newPage, direction,
 
 SlideAnimation.DIRECTION_FORWARDS = 0;
 SlideAnimation.DIRECTION_BACK = 1;
-SlideAnimation.DURATION = 0.4;
+SlideAnimation.DURATION = 300;
 
 SlideAnimation.prototype._registerNextTick = function() {
   if ('function' === typeof window.requestAnimationFrame) {
@@ -283,7 +292,7 @@ SlideAnimation.prototype._updateLeft = function(percent) {
   } else {
     initialLeft = -this._newPage.width();
   }
-  this._newPage.css({left: (1 - leftPercent) * initialLeft});
+  this._newPage.element().css({left: (1 - leftPercent) * initialLeft});
 }
 
 SlideAnimation.prototype._updateMetrics = function(percent) {
