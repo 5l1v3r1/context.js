@@ -108,6 +108,11 @@
     this._$element = $element;
     this._$container = $container || $(document.body);
     this._containerPadding = containerPadding || DEFAULT_CONTAINER_PADDING;
+    this.onInvalidate = null;
+
+    this._elementParents = [];
+    this._boundInvalidate = this._invalidate.bind(this);
+    this._registerElementScroll();
   }
 
   Context.prototype.arrowPosition = function() {
@@ -126,6 +131,32 @@
       width: this._$container.width() - this._containerPadding*2,
       height: this._$container.height() - this._containerPadding*2
     };
+  };
+
+  Context.prototype.dispose = function() {
+    this._unregisterElementScroll();
+  };
+
+  Context.prototype._invalidate = function() {
+    if ('function' === typeof this.onInvalidate) {
+      this.onInvalidate();
+    }
+    this._unregisterElementScroll();
+  };
+
+  Context.prototype._registerElementScroll = function() {
+    var $element = this._$element;
+    do {
+      $element = $element.parent();
+      $element.scroll(this._boundInvalidate);
+      this._elementParents.push($element);
+    } while ($element[0] !== document.body);
+  };
+
+  Context.prototype._unregisterElementScroll = function() {
+    for (var i = 0, len = this._elementParents.length; i < len; ++i) {
+      this._elementParents[i].off('scroll', this._boundInvalidate);
+    }
   };
 
   exports.Context = Context;
@@ -288,14 +319,7 @@
 
     this._hoverTop = 0;
     this._hoverHeight = 0;
-
-    this._$shielding = $('<div></div>').css({
-      position: 'fixed',
-      left: 0,
-      top: 0,
-      width: '100%',
-      height: '100%'
-    }).click(this.hide.bind(this));
+    this._boundHide = this.hide.bind(this);
 
     this._$scrollingContent = $('<div></div>').css({
       position: 'absolute',
@@ -309,6 +333,12 @@
     this._$element = $('<div></div>').css({position: 'fixed'});
     this._$element.append(this._background.element());
     this._$element.append(this._$scrollingContent);
+    this._$element.mousedown(function(e) {
+      e.stopPropagation();
+      e.preventDefault();
+      return false;
+    });
+    context.onInvalidate = this.hide.bind(this);
 
     this._state = Menu.STATE_INITIAL;
   }
@@ -325,11 +355,12 @@
 
   Menu.prototype.hide = function() {
     if (this._state === Menu.STATE_SHOWING) {
-      this._$shielding.remove();
       this._$element.fadeOut(Menu.FADE_DURATION, function() {
         $(this).remove();
       }).css({pointerEvents: 'none'});
       this._state = Menu.STATE_HIDDEN;
+      $(document.body).off('mousedown', this._boundHide);
+      this._layoutInfo.getContext().dispose();
     }
   };
 
@@ -350,7 +381,8 @@
     if (this._state === Menu.STATE_INITIAL) {
       this._state = Menu.STATE_SHOWING;
       this._configureNewLayoutInfo();
-      $(document.body).append(this._$shielding).append(this._$element);
+      $(document.body).append(this._$element);
+      $(document.body).mousedown(this._boundHide);
     }
   };
 

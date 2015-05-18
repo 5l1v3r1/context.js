@@ -5,14 +5,7 @@ function Menu(context, page) {
 
   this._hoverTop = 0;
   this._hoverHeight = 0;
-
-  this._$shielding = $('<div></div>').css({
-    position: 'fixed',
-    left: 0,
-    top: 0,
-    width: '100%',
-    height: '100%'
-  }).click(this.hide.bind(this));
+  this._boundHide = this.hide.bind(this);
 
   this._$scrollingContent = $('<div></div>').css({
     position: 'absolute',
@@ -26,6 +19,12 @@ function Menu(context, page) {
   this._$element = $('<div></div>').css({position: 'fixed'});
   this._$element.append(this._background.element());
   this._$element.append(this._$scrollingContent);
+  this._$element.mousedown(function(e) {
+    e.stopPropagation();
+    e.preventDefault();
+    return false;
+  });
+  context.onInvalidate = this.hide.bind(this);
 
   this._state = Menu.STATE_INITIAL;
 }
@@ -42,11 +41,12 @@ Menu.STATE_HIDDEN = 2;
 
 Menu.prototype.hide = function() {
   if (this._state === Menu.STATE_SHOWING) {
-    this._$shielding.remove();
     this._$element.fadeOut(Menu.FADE_DURATION, function() {
       $(this).remove();
     }).css({pointerEvents: 'none'});
     this._state = Menu.STATE_HIDDEN;
+    $(document.body).off('mousedown', this._boundHide);
+    this._layoutInfo.getContext().dispose();
   }
 };
 
@@ -67,7 +67,8 @@ Menu.prototype.show = function() {
   if (this._state === Menu.STATE_INITIAL) {
     this._state = Menu.STATE_SHOWING;
     this._configureNewLayoutInfo();
-    $(document.body).append(this._$shielding).append(this._$element);
+    $(document.body).append(this._$element);
+    $(document.body).mousedown(this._boundHide);
   }
 };
 
