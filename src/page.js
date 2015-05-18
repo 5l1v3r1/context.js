@@ -20,7 +20,7 @@ function Page(rows) {
     this._height += row.height();
     this._$element.append(row.element());
   }
-  
+
   this._$element.css({width: this._width, height: this._height});
 
   this._registerUIEvents();
