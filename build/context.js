@@ -148,7 +148,7 @@
     this._metrics = this._computeMetrics();
     this._layoutWithMetrics(this._metrics);
     this._background.setMetrics(this._metrics);
-    this._page.element().css({pointerEvents: ''});
+    this._page.element().css({pointerEvents: '', position: ''});
   };
 
   Menu.prototype._animationFrame = function(metrics) {
