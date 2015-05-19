@@ -3,10 +3,10 @@ function TextRow(text, style) {
     position: 'relative',
     cursor: 'pointer'
   });
-  var $label = this._$element.find('label');
-  $label.text(text).css(TextRow.DEFAULT_STYLE);
+  this._$label = this._$element.find('label');
+  this._$label.text(text).css(TextRow.DEFAULT_STYLE);
   if (style) {
-    $label.css(style);
+    this._$label.css(style);
   }
   this._measure();
 }
@@ -19,7 +19,8 @@ TextRow.DEFAULT_STYLE = {
   color: '#999999',
   paddingLeft: 10,
   paddingRight: 10,
-  pointerEvents: 'none'
+  pointerEvents: 'none',
+  whiteSpace: 'nowrap'
 };
 
 TextRow.prototype.element = function() {
@@ -39,30 +40,28 @@ TextRow.prototype.minimumWidth = function() {
 };
 
 TextRow.prototype.textColor = function() {
-  return this.element().find('label').css('color');
+  return this._$label.css('color');
 };
 
 TextRow.prototype._measure = function() {
-  this._$element.css({
+  var styleBackup = this._$label.css(['display', 'position', 'top', 'left',
+    'visibility']);
+  this._$label.css({
     display: 'inline-block',
     position: 'absolute',
     top: -10000,
     left: -10000,
     visibility: 'hidden'
   });
-  $(document.body).append(this._$element);
+  
+  this._$label.detach();
+  $(document.body).append(this._$label);
+  
+  this._minWidth = this._$label.outerWidth();
+  this._height = this._$label.outerHeight();
 
-  this._minWidth = this._$element.width();
-  this._height = this._$element.height();
-
-  this._$element.detach();
-  this._$element.css({
-    display: 'block',
-    position: 'relative',
-    top: '',
-    left: '',
-    visibility: 'visible'
-  });
+  this._$label.detach().css(styleBackup);
+  this._$element.append(this._$label);
 };
 
 function ExpandableRow(text, style) {
