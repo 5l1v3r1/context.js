@@ -53,7 +53,7 @@
           new window.contextjs.TextRow('Copy'),
           new window.contextjs.TextRow('Paste'),
           new window.contextjs.ExpandableRow('Move To Puzzle'),
-          new window.contextjs.ExpandableRow('Type'),
+          new window.contextjs.ExpandableRow('Type')
         ]);
         var page2 = new window.contextjs.Page([
           new window.contextjs.BackRow('Move To Puzzle'),
@@ -71,8 +71,8 @@
         ]);
         var page3 = new window.contextjs.Page([
           new window.contextjs.BackRow('Type'),
-          new window.contextjs.TextRow('Regular'),
-          new window.contextjs.TextRow('Fancy'),
+          new window.contextjs.CheckRow(false, 'Regular'),
+          new window.contextjs.CheckRow(true, 'Fancy')
         ]);
         page1.onClick = function(idx) {
           if (idx === 3) {

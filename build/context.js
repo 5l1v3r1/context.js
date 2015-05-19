@@ -639,6 +639,10 @@
     return this._minWidth;
   };
 
+  TextRow.prototype.textColor = function() {
+    return this.element().find('label').css('color');
+  };
+
   TextRow.prototype._measure = function() {
     this._$element.css({
       display: 'inline-block',
@@ -696,7 +700,7 @@
     this._$arrow[0].width = width;
     this._$arrow[0].height = height;
 
-    context.strokeStyle = this.element().find('label').css('color');
+    context.strokeStyle = this.textColor();
     context.lineWidth = ratio * ExpandableRow.ARROW_THICKNESS;
     context.beginPath();
     context.moveTo(ratio*ExpandableRow.ARROW_THICKNESS,
@@ -744,7 +748,7 @@
     this._$arrow[0].width = width;
     this._$arrow[0].height = height;
 
-    context.strokeStyle = this.element().find('label').css('color');
+    context.strokeStyle = this.textColor();
     context.lineWidth = ratio * BackRow.ARROW_THICKNESS;
     context.beginPath();
     context.moveTo(width-ratio*BackRow.ARROW_THICKNESS,
@@ -756,8 +760,60 @@
     context.closePath();
   };
 
+  function CheckRow(checked, text, style) {
+    if (!style) {
+      style = {};
+    }
+    style.paddingLeft = CheckRow.CHECK_PADDING_LEFT + CheckRow.CHECK_WIDTH +
+      CheckRow.CHECK_PADDING_RIGHT;
+
+    TextRow.call(this, text, style);
+
+    if (checked) {
+      this._$check = $('<canvas></canvas>').css({
+        width: CheckRow.CHECK_WIDTH,
+        height: CheckRow.CHECK_HEIGHT,
+        position: 'absolute',
+        left: CheckRow.CHECK_PADDING_LEFT,
+        top: 'calc(50% - ' + CheckRow.CHECK_HEIGHT/2 + 'px)',
+        pointerEvents: 'none'
+      });
+      this.element().append(this._$check);
+      this._fillCanvas();
+    }
+  }
+
+  CheckRow.CHECK_PADDING_LEFT = 5;
+  CheckRow.CHECK_PADDING_RIGHT = 5;
+  CheckRow.CHECK_WIDTH = 20;
+  CheckRow.CHECK_HEIGHT = 15;
+  CheckRow.CHECK_THICKNESS = 2;
+
+  CheckRow.prototype = Object.create(TextRow.prototype);
+
+  CheckRow.prototype._fillCanvas = function() {
+    var context = this._$check[0].getContext('2d');
+    var ratio = Math.ceil(window.crystal.getRatio());
+    var width = ratio * CheckRow.CHECK_WIDTH;
+    var height = ratio * CheckRow.CHECK_HEIGHT;
+    this._$check[0].width = width;
+    this._$check[0].height = height;
+
+    var thickness = CheckRow.CHECK_THICKNESS * ratio;
+
+    context.strokeStyle = this.textColor();
+    context.lineWidth = thickness;
+    context.beginPath();
+    context.moveTo(thickness, height/2);
+    context.lineTo(width/3, height-thickness);
+    context.lineTo(width-thickness, thickness);
+    context.stroke();
+    context.closePath();
+  };
+
   exports.TextRow = TextRow;
   exports.ExpandableRow = ExpandableRow;
   exports.BackRow = BackRow;
+  exports.CheckRow = CheckRow;
 
 })();
