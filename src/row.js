@@ -53,10 +53,10 @@ TextRow.prototype._measure = function() {
     left: -10000,
     visibility: 'hidden'
   });
-  
+
   this._$label.detach();
   $(document.body).append(this._$label);
-  
+
   this._minWidth = this._$label.outerWidth();
   this._height = this._$label.outerHeight();
 
