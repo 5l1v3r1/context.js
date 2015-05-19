@@ -319,7 +319,7 @@
 
     this._hoverTop = 0;
     this._hoverHeight = 0;
-    this._boundHide = this.hide.bind(this);
+    this._boundMouseDown = this._handleMouseDown.bind(this);
 
     this._$scrollingContent = $('<div></div>').css({
       position: 'absolute',
@@ -333,11 +333,6 @@
     this._$element = $('<div></div>').css({position: 'fixed'});
     this._$element.append(this._background.element());
     this._$element.append(this._$scrollingContent);
-    this._$element.mousedown(function(e) {
-      e.stopPropagation();
-      e.preventDefault();
-      return false;
-    });
     context.onInvalidate = this.hide.bind(this);
 
     this._state = Menu.STATE_INITIAL;
@@ -359,7 +354,7 @@
         $(this).remove();
       }).css({pointerEvents: 'none'});
       this._state = Menu.STATE_HIDDEN;
-      $(document.body).off('mousedown', this._boundHide);
+      document.body.removeEventListener('mousedown', this._boundHide, true);
       this._layoutInfo.getContext().dispose();
     }
   };
@@ -382,7 +377,7 @@
       this._state = Menu.STATE_SHOWING;
       this._configureNewLayoutInfo();
       $(document.body).append(this._$element);
-      $(document.body).mousedown(this._boundHide);
+      document.body.addEventListener('mousedown', this._boundMouseDown, true);
     }
   };
 
@@ -392,6 +387,18 @@
     this._layoutInfo.begin();
     this._layout();
     this._$scrollingContent.append(this._layoutInfo.getPage().element());
+  };
+
+  Menu.prototype._handleMouseDown = function(e) {
+    var x = e.clientX;
+    var y = e.clientY;
+    var offset = this._$element.offset();
+    var width = this._$element.width();
+    var height = this._$element.height();
+    if (x < offset.left || x > offset.left + width || y < offset.top ||
+        y > offset.top + height) {
+      this.hide();
+    }
   };
 
   Menu.prototype._layout = function() {
