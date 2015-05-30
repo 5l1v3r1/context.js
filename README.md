@@ -4,7 +4,7 @@
 
 # Dependencies
 
-You must have [crystal](https://github.com/unixpickle/crystal) and [jQuery](https://jquery.com) in order to use context.js.
+You must have [crystal](https://github.com/unixpickle/crystal), [clickthru.js](https://github.com/unixpickle/clickthru.js) and [jQuery](https://jquery.com) in order to use context.js.
 
 # License
 

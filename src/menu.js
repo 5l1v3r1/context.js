@@ -5,7 +5,7 @@ function Menu(context, page) {
 
   this._hoverTop = 0;
   this._hoverHeight = 0;
-  this._boundMouseDown = this._handleMouseDown.bind(this);
+  this._boundClickThru = this._clickThru.bind(this);
 
   this._$scrollingContent = $('<div></div>').css({
     position: 'absolute',
@@ -40,7 +40,7 @@ Menu.prototype.hide = function() {
       $(this).remove();
     }).css({pointerEvents: 'none'});
     this._state = Menu.STATE_HIDDEN;
-    document.body.removeEventListener('mousedown', this._boundHide, true);
+    window.clickthru.removeListener(this._boundClickThru);
     this._layoutInfo.getContext().dispose();
   }
 };
@@ -63,7 +63,13 @@ Menu.prototype.show = function() {
     this._state = Menu.STATE_SHOWING;
     this._configureNewLayoutInfo();
     $(document.body).append(this._$element);
-    document.body.addEventListener('mousedown', this._boundMouseDown, true);
+    window.clickthru.addListener(this._boundClickThru);
+  }
+};
+
+Menu.prototype._clickThru = function(e) {
+  if (!e.inElement(this._$element[0])) {
+    this.hide();
   }
 };
 
@@ -73,18 +79,6 @@ Menu.prototype._configureNewLayoutInfo = function() {
   this._layoutInfo.begin();
   this._layout();
   this._$scrollingContent.append(this._layoutInfo.getPage().element());
-};
-
-Menu.prototype._handleMouseDown = function(e) {
-  var x = e.clientX;
-  var y = e.clientY;
-  var offset = this._$element.offset();
-  var width = this._$element.width();
-  var height = this._$element.height();
-  if (x < offset.left || x > offset.left + width || y < offset.top ||
-      y > offset.top + height) {
-    this.hide();
-  }
 };
 
 Menu.prototype._layout = function() {
