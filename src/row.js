@@ -114,9 +114,16 @@ function BackRow(text, style) {
   if (!style) {
     style = {};
   }
+
+  var oldPaddingLeft = style.paddingLeft;
   style.paddingLeft = BackRow.ARROW_WIDTH + BackRow.ARROW_PADDING_LEFT +
     BackRow.ARROW_PADDING_RIGHT;
   TextRow.call(this, text, style);
+  if ('undefined' === typeof oldPaddingLeft) {
+    delete style.paddingLeft;
+  } else {
+    style.paddingLeft = oldPaddingLeft;
+  }
 
   this._$arrow = $('<canvas></canvas>').css({
     width: BackRow.ARROW_WIDTH,
@@ -162,10 +169,16 @@ function CheckRow(checked, text, style) {
   if (!style) {
     style = {};
   }
+
+  var oldPaddingLeft = style.paddingLeft;
   style.paddingLeft = CheckRow.CHECK_PADDING_LEFT + CheckRow.CHECK_WIDTH +
     CheckRow.CHECK_PADDING_RIGHT;
-
   TextRow.call(this, text, style);
+  if ('undefined' === typeof oldPaddingLeft) {
+    delete style.paddingLeft;
+  } else {
+    style.paddingLeft = oldPaddingLeft;
+  }
 
   if (checked) {
     this._$check = $('<canvas></canvas>').css({
